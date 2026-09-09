@@ -88,6 +88,19 @@ describe('goalChangedToEvent', () => {
     ).toBeNull();
   });
 
+  test('returns null for prototype-inherited operation names (MINOR-1)', () => {
+    for (const operation of ['constructor', 'toString', 'hasOwnProperty', 'valueOf', '__proto__']) {
+      expect(
+        goalChangedToEvent({
+          agent: agent('session-1'),
+          change: { operation, ref: { id: 'goal-1', revision: 1 } } as unknown as GoalChanged,
+          seq: 1,
+          timestamp: 0,
+        }),
+      ).toBeNull();
+    }
+  });
+
   test('returns null when the goal ref is malformed (M2)', () => {
     const badRefs = [
       { operation: 'create', ref: undefined },

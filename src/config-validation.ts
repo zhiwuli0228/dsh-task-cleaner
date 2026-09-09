@@ -72,6 +72,13 @@ export function validateConfigRoots(
   const workspaceResolved = workspace === undefined ? undefined : assertValidRoot('workspaceRoot', workspace);
   const quarantineResolved = quarantine === undefined ? undefined : assertValidRoot('quarantineRoot', quarantine);
 
+  // The quarantine non-symlink guarantee (S-05) applies even when only
+  // `quarantineRoot` is configured, so it must run before the mutual-exclusion
+  // early return below.
+  if (quarantineResolved !== undefined && lstatSync(quarantineResolved).isSymbolicLink()) {
+    throw new ConfigRootValidationError(`quarantineRoot must not be a symlink: "${quarantineResolved}"`);
+  }
+
   if (workspaceResolved === undefined || quarantineResolved === undefined) {
     return;
   }
@@ -84,9 +91,5 @@ export function validateConfigRoots(
   }
   if (isInside(quarantineResolved, workspaceResolved)) {
     throw new ConfigRootValidationError('workspaceRoot must not be inside the quarantineRoot');
-  }
-
-  if (lstatSync(quarantineResolved).isSymbolicLink()) {
-    throw new ConfigRootValidationError(`quarantineRoot must not be a symlink: "${quarantineResolved}"`);
   }
 }

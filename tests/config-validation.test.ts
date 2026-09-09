@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join, parse } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
@@ -11,6 +11,23 @@ function makeDir(): string {
   tempDirs.push(dir);
   return dir;
 }
+
+function canCreateDirSymlink(): boolean {
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-sym-'));
+  const target = join(dir, 'target');
+  const link = join(dir, 'link');
+  try {
+    mkdirSync(target);
+    symlinkSync(target, link, process.platform === 'win32' ? 'junction' : 'dir');
+    return lstatSync(link).isSymbolicLink();
+  } catch {
+    return false;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const symlinkSupported = canCreateDirSymlink();
 
 afterEach(() => {
   for (const dir of tempDirs.splice(0)) {
@@ -88,5 +105,15 @@ describe('validateConfigRoots (MAJOR-03)', () => {
     expect(() => validateConfigRoots({ workspaceRoot: workspace, quarantineRoot: quarantine })).toThrow(
       ConfigRootValidationError,
     );
+  });
+
+  test.skipIf(!symlinkSupported)('rejects a quarantineRoot symlink even when workspaceRoot is unset (MINOR-2)', () => {
+    const dir = makeDir();
+    const target = join(dir, 'target');
+    mkdirSync(target);
+    const link = join(dir, 'link');
+    symlinkSync(target, link, process.platform === 'win32' ? 'junction' : 'dir');
+
+    expect(() => validateConfigRoots({ quarantineRoot: link })).toThrow(ConfigRootValidationError);
   });
 });
