@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "audit-event.schema.json",
+  "title": "dsh-task-cleaner audit event (v1alpha1)",
+  "description": "R2: append-only, tamper-evident audit stream entry for every safety-sensitive action. dry-run and denied actions are recorded too.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "seq",
+    "timestamp",
+    "task_id",
+    "run_id",
+    "phase",
+    "actor",
+    "event_source",
+    "action",
+    "outcome",
+    "dry_run",
+    "targets",
+    "refs"
+  ],
+  "properties": {
+    "schema_version": { "const": "dsh-task-cleaner/audit/v1alpha1" },
+    "event_id": { "$ref": "common.schema.json#/$defs/uuid" },
+    "seq": { "type": "integer", "minimum": 1 },
+    "timestamp": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "task_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "phase": { "enum": ["discover", "plan", "approve", "quarantine", "restore", "expire", "purge", "reconcile"] },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "enum": ["user", "plugin", "cli", "system"] },
+        "id": { "type": "string", "minLength": 1 },
+        "session_ref": { "type": ["string", "null"] }
+      }
+    },
+    "event_source": { "enum": ["cli", "web", "dsh_event", "internal"] },
+    "action": { "type": "string", "minLength": 1 },
+    "outcome": { "enum": ["intent", "allowed", "denied", "failed"] },
+    "dry_run": { "type": "boolean" },
+    "targets": {
+      "type": "array",
+      "items": { "$ref": "audit-event.schema.json#/$defs/target" }
+    },
+    "refs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "manifest_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "plan_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "quarantine_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "restore_id": { "$ref": "common.schema.json#/$defs/uuid" }
+      }
+    },
+    "failure_reason": { "type": ["string", "null"] },
+    "reason": { "type": "string" }
+  },
+  "$defs": {
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rel_path", "real_path", "candidate_id", "decision_id", "identity"],
+      "properties": {
+        "rel_path": { "$ref": "common.schema.json#/$defs/relPath" },
+        "real_path": { "$ref": "common.schema.json#/$defs/realPath" },
+        "candidate_id": { "type": "string", "minLength": 1 },
+        "decision_id": { "type": "string", "minLength": 1 },
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dev", "ino"],
+          "properties": {
+            "dev": { "type": "string" },
+            "ino": { "type": "string" },
+            "sha256_before": { "$ref": "common.schema.json#/$defs/sha256" }
+          }
+        }
+      }
+    }
+  }
+}

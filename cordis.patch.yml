@@ -1,0 +1,15 @@
+# dsh-task-cleaner plugin bundle patch.
+#
+# This is the DSH plugin load manifest (declared by `dsh.bundle.patch` in
+# package.json), NOT a Harness governance file. The profile composer merges
+# this row into the target profile's `cordis.patch.yml` when the plugin is
+# installed via `dsh plugin --profile <name> add .`.
+#
+# The exact loader row semantics (self-referential `name`, config merging) are
+# validated by the DevOps headless smoke test against the locked DSH baseline
+# (0.1.2-rc.1); see ADR-003.
+- insert:
+    - id: dsh-task-cleaner
+      name: dsh-task-cleaner
+      config:
+        dryRun: true
