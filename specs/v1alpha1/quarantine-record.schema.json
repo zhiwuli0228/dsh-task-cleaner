@@ -63,7 +63,10 @@
         "candidate_id": { "type": "string", "minLength": 1 },
         "source_rel_path": { "$ref": "common.schema.json#/$defs/relPath" },
         "source_real_path": { "$ref": "common.schema.json#/$defs/realPath" },
-        "quarantine_rel_path": { "type": "string", "minLength": 1 },
+        "quarantine_rel_path": {
+          "$ref": "common.schema.json#/$defs/relPath",
+          "description": "Path of the staged item relative to the quarantine area root; same relative-path rules as source_rel_path, so traversal/../ escape is rejected (MAJOR-02)."
+        },
         "kind": { "enum": ["file", "directory", "symlink"] },
         "identity": { "$ref": "common.schema.json#/$defs/fileIdentity" },
         "sha256_before": { "$ref": "common.schema.json#/$defs/sha256" },

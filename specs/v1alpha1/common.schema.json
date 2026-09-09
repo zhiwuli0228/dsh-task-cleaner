@@ -19,12 +19,20 @@
     "relPath": {
       "type": "string",
       "minLength": 1,
-      "description": "Workspace-relative POSIX path; must not be absolute or contain drive/UNC prefixes."
+      "description": "Workspace-relative POSIX path: relative only; no absolute/root, drive, or UNC prefix; no '.'/'..' segments; no backslash or control characters (MAJOR-02).",
+      "pattern": "^[^/\\\\\\u0000-\\u001f\\u007f]+(/[^/\\\\\\u0000-\\u001f\\u007f]+)*$",
+      "allOf": [
+        { "not": { "pattern": "(^|/)\\.\\.(/|$)" } },
+        { "not": { "pattern": "(^|/)\\.(/|$)" } },
+        { "not": { "pattern": "^[A-Za-z]:[\\\\/]" } },
+        { "not": { "pattern": "^[\\\\/]{2}" } }
+      ]
     },
     "realPath": {
       "type": "string",
       "minLength": 1,
-      "description": "Absolute canonical path resolved by the plugin's FsPort; never accepted from external input."
+      "description": "Absolute canonical path resolved by the plugin's FsPort; never accepted from external input. Must be POSIX-rooted (/), Windows drive-rooted (X:\\ or X:/), or UNC (\\\\server\\share) (MAJOR-02).",
+      "pattern": "^(?:/|[A-Za-z]:[\\\\/]|\\\\{2})[^\\u0000-\\u001f\\u007f]*$"
     },
     "fileIdentity": {
       "type": "object",
