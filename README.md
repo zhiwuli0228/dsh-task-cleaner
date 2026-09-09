@@ -22,32 +22,40 @@ task start -> workspace baseline -> task execution -> cleanup plan
            -> safety validation -> quarantine -> restore or expiry purge
 ```
 
-## Frontend/shell baseline (UX contract)
+## Development
 
-The CLI/Web shells and view models implement `docs/design/ux-shell-contract.md`
-(once committed) and only map, never compute cleanup decisions:
+The repository is a TypeScript/Node ESM package with a DSH plugin entry
+(`src/index.ts`) and a dependency-free shell contract
+(`docs/design/ux-shell-contract.md`). Layout:
 
-- `src/shell/` — view-model types, `UxShellPorts`, JSON envelope, formatting,
-  command state machine, domain-to-view-model mapping.
-- `src/cli/` — command parser and executor (`plan`/`dry-run`, `quarantine`,
-  `restore`, `status`, `audit`, `config show`), exit codes per the contract,
-  no delete/force surface; entry point `dist/src/cli/main.js` (or
-  `node src/cli/main.ts`) uses a demo port provider until the composition
-  root wires backend stubs.
-- `src/web/` — five views (overview/plan/quarantine/audit/config), view
-  states, route resolution, confirmation semantics and a dependency-free DOM
-  mount (`dist-web/web/main.js`) for local preview.
+- `src/shell/`, `src/cli/`, `src/web/` — view-model/port/envelope contracts
+  and CLI/Web shells (map-only; no cleanup decisions).
+- `src/domain/`, `src/ports/`, `src/app/`, `src/adapter/` — domain contracts,
+  ports, noop/stub use cases, and adapters (DSH import confined to
+  `src/adapter/dsh/`).
+- `tools/governance/` — ledger/layout/workflow validators.
+- `docs/harness/` — Harness governance root (no root-level `.harness/`).
 
-Dev self-check (until the DevOps track lands the unified scripts):
+### Install and verify
 
-```text
-npm install
-npx tsc -p tsconfig.json          # node-side typecheck
-npx tsc -p tsconfig.web.json      # browser-side typecheck
-npx tsc -p tsconfig.build.json    # emit dist/ (tests + CLI)
-npx tsc -p tsconfig.web-build.json  # emit dist-web/ (browser demo)
-node --test dist/tests            # contract tests (node --test <files>)
+```powershell
+./scripts/dev.ps1 install        # npm ci/install (npm 11 required)
+./scripts/dev.ps1 typecheck      # node + web typecheck
+./scripts/dev.ps1 lint
+./scripts/dev.ps1 test           # vitest suite (85+ tests)
+./scripts/dev.ps1 build          # runtime lib + dist-web + governance CLI
+./scripts/dev.ps1 verify         # typecheck + lint + test + all builds
+./scripts/verify-harness.ps1     # full closed-loop Harness verification
 ```
+
+The equivalent npm commands are `npm install`, `npm run typecheck`,
+`npm run lint`, `npm test`, `npm run build` (plus `build:web` and
+`build:governance`), and `npm run verify`. Harness stages are exposed as
+`npm run harness:layout|check|workflow` and CI runs the layout guard on every
+push.
+
+CLI demo (demo port provider until the composition root wires backend stubs):
+`npm run demo:cli`. Web shell demo artifacts are emitted under `dist-web/`.
 
 ## License
 

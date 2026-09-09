@@ -153,10 +153,12 @@ function runGitBytes(root: string, args: string[]): Buffer {
     return execFileSync("git", args, {
       cwd: root,
       encoding: "buffer",
+      stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
     });
-  } catch {
-    return Buffer.alloc(0);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new WorkflowError(`git_error: ${message}`);
   }
 }
 

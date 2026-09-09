@@ -1,11 +1,19 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   loadLedger,
   validateAcceptedDocuments,
+  validateLedgerAgainstSchema,
   validateLedger,
+  checkContainedPath,
 } from "./index.js";
 import type { TraceabilityLedger } from "./types.js";
 
@@ -153,6 +161,107 @@ describe("traceability ledger", () => {
     expect(
       failures.some((item) => item.code === "artifact_path_escapes"),
     ).toBe(true);
+  });
+});
+
+describe("traceability schema as source of truth", () => {
+  function writeSchema(root: string, overrides: Record<string, unknown> = {}): void {
+    const schemaPath = path.join(root, "docs", "harness", "traceability.schema.json");
+    mkdirSync(path.dirname(schemaPath), { recursive: true });
+    const base = {
+      schema_version: { const: "dsh-task-cleaner/traceability/v1alpha1" },
+      entries: {
+        items: {
+          properties: {
+            requirement_id: { pattern: "^[A-Z]+-[0-9]{3}$" },
+            status: {
+              enum: [
+                "planned",
+                "specified",
+                "implemented",
+                "acceptance_pending",
+                "accepted",
+                "blocked",
+              ],
+            },
+            verification: {
+              items: {
+                properties: {
+                  mode: {
+                    enum: ["declarative", "unit", "integration", "e2e", "manual", "ci"],
+                  },
+                  status: { enum: ["passed", "failed", "pending", "missing"] },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+    const merged = {
+      properties: { ...base, ...overrides },
+    };
+    writeFileSync(schemaPath, JSON.stringify(merged, null, 2));
+  }
+
+  function emptyLedger(): TraceabilityLedger {
+    return {
+      schema_version: "dsh-task-cleaner/traceability/v1alpha1",
+      entries: [],
+    };
+  }
+
+  it("accepts an empty ledger that matches the committed schema", () => {
+    const root = makeRoot();
+    writeSchema(root);
+    expect(validateLedgerAgainstSchema(root, emptyLedger())).toEqual([]);
+  });
+
+  it("rejects requirement ids outside the schema pattern", () => {
+    const root = makeRoot();
+    writeSchema(root);
+    const ledger = emptyLedger();
+    ledger.entries.push({
+      requirement_id: "REQ-01",
+      status: "planned",
+      requirements: [],
+      specs: [],
+      tasks: [],
+      code: [],
+      verification: [],
+      traces: [],
+    });
+    const failures = validateLedgerAgainstSchema(root, ledger);
+    expect(
+      failures.some((item) => item.code === "ledger_schema_requirement_id"),
+    ).toBe(true);
+  });
+
+  it("rejects a ledger schema_version that drifts from the schema", () => {
+    const root = makeRoot();
+    writeSchema(root);
+    const ledger = emptyLedger();
+    ledger.schema_version = "antt/traceability/v1alpha1";
+    const failures = validateLedgerAgainstSchema(root, ledger);
+    expect(
+      failures.some((item) => item.code === "ledger_schema_version_mismatch"),
+    ).toBe(true);
+  });
+});
+
+describe("governance path containment with realpath", () => {
+  it("rejects a symlink/junction that resolves outside the governance root", () => {
+    const root = makeRoot();
+    const outside = makeRoot();
+    writeFileSync(path.join(outside, "payload.md"), "secret");
+    mkdirSync(path.join(root, "docs"), { recursive: true });
+    const linkType =
+      process.platform === "win32"
+        ? ("junction" as const)
+        : ("dir" as const);
+    symlinkSync(outside, path.join(root, "docs", "escape"), linkType);
+    const failure = checkContainedPath(root, "docs/escape/payload.md");
+    expect(failure?.code).toBe("artifact_path_escapes");
   });
 });
 

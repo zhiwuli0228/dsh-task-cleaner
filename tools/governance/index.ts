@@ -2,6 +2,7 @@ import {
   existsSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   statSync,
 } from "node:fs";
 import path from "node:path";
@@ -52,6 +53,22 @@ const VERIFICATION_STATUSES = new Set([
   "pending",
   "missing",
 ]);
+
+function schemaObject(
+  value: Record<string, unknown>,
+  ...keys: string[]
+): Record<string, unknown> | null {
+  let current: unknown = value;
+  for (const key of keys) {
+    if (typeof current !== "object" || current === null) {
+      return null;
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+  return typeof current === "object" && current !== null
+    ? (current as Record<string, unknown>)
+    : null;
+}
 
 export function posixPath(value: string): string {
   return value.replace(/\\/g, "/");
@@ -139,11 +156,32 @@ export function checkContainedPath(
   }
   try {
     statSync(resolved);
-    return null;
   } catch {
     return issue(
       "artifact_path_missing",
       `artifact path "${raw}" does not exist`,
+    );
+  }
+  try {
+    const rootReal = realpathSync(path.resolve(root));
+    const resolvedReal = realpathSync(resolved);
+    const realRelative = path.relative(rootReal, resolvedReal);
+    if (
+      realRelative === ".." ||
+      realRelative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(realRelative)
+    ) {
+      return issue(
+        "artifact_path_escapes",
+        `artifact path "${raw}" resolves outside the repository`,
+      );
+    }
+    return null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return issue(
+      "artifact_path_invalid",
+      `artifact path "${raw}" cannot be resolved: ${message}`,
     );
   }
 }
@@ -355,6 +393,146 @@ export function validateLedger(
       }
     }
   });
+  return failures;
+}
+
+/**
+ * Cross-check the ledger against `docs/harness/traceability.schema.json` so
+ * the validator does not drift from the committed schema (same source of
+ * truth for requirement_id pattern, status enum, and verification enums).
+ */
+export function validateLedgerAgainstSchema(
+  root: string,
+  ledger: TraceabilityLedger,
+): GovernanceIssue[] {
+  const failures: GovernanceIssue[] = [];
+  let rawSchema: unknown;
+  try {
+    rawSchema = readJsonObject(
+      path.join(root, TRACEABILITY_SCHEMA_PATH),
+      "traceability schema",
+    );
+  } catch (error) {
+    if (error instanceof GovernanceError) {
+      failures.push(issue(error.code, error.message));
+    }
+    return failures;
+  }
+  const schema = rawSchema as Record<string, unknown>;
+  const versionNode = schemaObject(schema, "properties", "schema_version");
+  const expectedVersion = versionNode?.const;
+  if (String(expectedVersion) !== String(ledger.schema_version)) {
+    failures.push(
+      issue(
+        "ledger_schema_version_mismatch",
+        `ledger schema_version ${JSON.stringify(
+          ledger.schema_version,
+        )} does not match traceability schema const ${JSON.stringify(
+          expectedVersion,
+        )}`,
+      ),
+    );
+  }
+  const entrySchema = schemaObject(
+    schema,
+    "properties",
+    "entries",
+    "items",
+    "properties",
+  );
+  const requirementNode = entrySchema?.requirement_id as
+    | Record<string, unknown>
+    | undefined;
+  const requirementPattern = String(requirementNode?.pattern ?? "");
+  const statusNode = entrySchema?.status as
+    | Record<string, unknown>
+    | undefined;
+  const statuses = Array.isArray(statusNode?.enum)
+    ? (statusNode?.enum as unknown[])
+    : [];
+  const verificationNode = entrySchema?.verification as
+    | Record<string, unknown>
+    | undefined;
+  const modeNode = schemaObject(
+    verificationNode ?? {},
+    "items",
+    "properties",
+    "mode",
+  );
+  const statusNodeVerification = schemaObject(
+    verificationNode ?? {},
+    "items",
+    "properties",
+    "status",
+  );
+  const modes = Array.isArray(modeNode?.enum)
+    ? (modeNode?.enum as unknown[])
+    : [];
+  const verificationStatuses = Array.isArray(statusNodeVerification?.enum)
+    ? (statusNodeVerification?.enum as unknown[])
+    : [];
+
+  for (const entry of ledger.entries) {
+    if (requirementPattern) {
+      try {
+        if (!new RegExp(requirementPattern).test(entry.requirement_id)) {
+          failures.push(
+            issue(
+              "ledger_schema_requirement_id",
+              `requirement_id ${JSON.stringify(
+                entry.requirement_id,
+              )} does not match schema pattern ${requirementPattern}`,
+            ),
+          );
+        }
+      } catch {
+        failures.push(
+          issue(
+            "ledger_schema_invalid",
+            `traceability schema requirement_id pattern is not a valid regex`,
+          ),
+        );
+      }
+    }
+    if (
+      statuses.length > 0 &&
+      !statuses.includes(entry.status)
+    ) {
+      failures.push(
+        issue(
+          "ledger_schema_status",
+          `requirement_id ${entry.requirement_id} status ${JSON.stringify(
+            entry.status,
+          )} is not allowed by traceability schema`,
+        ),
+      );
+    }
+    for (const verification of entry.verification) {
+      if (modes.length > 0 && !modes.includes(verification.mode)) {
+        failures.push(
+          issue(
+            "ledger_schema_verification",
+            `requirement_id ${entry.requirement_id} verification mode ${JSON.stringify(
+              verification.mode,
+            )} is not allowed by traceability schema`,
+          ),
+        );
+      }
+      if (
+        verificationStatuses.length > 0 &&
+        !verificationStatuses.includes(verification.status)
+      ) {
+        failures.push(
+          issue(
+            "ledger_schema_verification",
+            `requirement_id ${entry.requirement_id} verification status ${JSON.stringify(
+              verification.status,
+            )} is not allowed by traceability schema`,
+          ),
+        );
+      }
+    }
+  }
   return failures;
 }
 

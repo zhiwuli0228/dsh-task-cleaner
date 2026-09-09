@@ -6,6 +6,7 @@ import {
   loadLedger,
   validateAcceptedDocuments,
   validateLedger,
+  validateLedgerAgainstSchema,
 } from "./index.js";
 import { layoutGuard } from "./layout-guard.js";
 import {
@@ -95,6 +96,7 @@ function checkCommand(options: CliOptions): void {
       path.join(options.root, TRACEABILITY_LEDGER_PATH),
     );
     issues.push(...validateLedger(options.root, ledger));
+    issues.push(...validateLedgerAgainstSchema(options.root, ledger));
     issues.push(
       ...validateAcceptedDocuments(
         options.root,

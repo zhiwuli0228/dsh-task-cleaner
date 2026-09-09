@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   classifyImpact,
   discoverCandidates,
+  discoverChangedPaths,
   validateState,
 } from "./workflow-checker.js";
 
@@ -43,6 +44,12 @@ function commitSeed(root: string): string {
   runGit(root, ["add", "."]);
   runGit(root, ["commit", "-m", "seed"]);
   return runGit(root, ["rev-parse", "HEAD"]);
+}
+
+function makePlainRoot(): string {
+  const root = mkdtempSync(path.join(tmpdir(), "dsh-workflow-plain-"));
+  tempRoots.push(root);
+  return root;
 }
 
 afterEach(() => {
@@ -210,4 +217,8 @@ describe("discovery", () => {
     expect(issues.some((item) => item.code === "missing_registration")).toBe(true);
   });
 
+  it("treats git subprocess failure as a hard error instead of empty output", () => {
+    const root = makePlainRoot();
+    expect(() => discoverChangedPaths(root, "0".repeat(40))).toThrow(/git_error/);
+  });
 });
