@@ -27,7 +27,9 @@ export function isNonEmptyString(value: unknown): value is string {
 }
 
 export function isGoalOperation(value: unknown): value is GoalOperation {
-  return typeof value === 'string' && value in GOAL_OPERATION_PHASE;
+  // Own-property check only: `in` would also match inherited names like
+  // `constructor`/`toString`, letting a forged payload slip past the whitelist.
+  return typeof value === 'string' && Object.hasOwn(GOAL_OPERATION_PHASE, value);
 }
 
 function isFiniteNumber(value: unknown): value is number {
