@@ -76,6 +76,28 @@ function parseSegments(path: string): string[] {
   return path.split("/").filter((segment) => segment.length > 0);
 }
 
+/**
+ * Defensive URL-decoding for route parameters (Review SUGGESTION).
+ * Malformed percent-encoding or decoded control characters must never
+ * reach a view model; callers fall back to a safe route.
+ */
+function decodeSegment(segment: string): string | null {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+  // Reject empty results, any control characters (including NUL/newline),
+  // separators introduced through encoding, and traversal-shaped values
+  // that could confuse labels or later path handling.
+  if (decoded.length === 0) return null;
+  if (/[\u0000-\u001f\u007f]/.test(decoded)) return null;
+  if (decoded.includes("/") || decoded.includes("\\")) return null;
+  if (decoded === "." || decoded === "..") return null;
+  return decoded;
+}
+
 function matchPattern(pattern: string, segments: string[]): Record<string, string> | null {
   const patternSegments = parseSegments(pattern);
   if (patternSegments.length !== segments.length) return null;
@@ -83,7 +105,9 @@ function matchPattern(pattern: string, segments: string[]): Record<string, strin
   for (let index = 0; index < patternSegments.length; index += 1) {
     const patternSegment = patternSegments[index];
     if (patternSegment.startsWith(":")) {
-      params[patternSegment.slice(1)] = decodeURIComponent(segments[index]);
+      const decoded = decodeSegment(segments[index]);
+      if (decoded === null) return null;
+      params[patternSegment.slice(1)] = decoded;
     } else if (patternSegment !== segments[index]) {
       return null;
     }

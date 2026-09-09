@@ -244,10 +244,17 @@ export async function renderView(
 /** Mounts the five-view shell into #app for the hash route on load. */
 export function mountApp(root: HTMLElement, ports: UxShellPorts): void {
   const render = async (): Promise<void> => {
-    const hash = window.location.hash.replace(/^#/, "") || "/";
-    const route = resolveRoute(hash);
-    document.title = `${viewDefinition(route.view).title} · dsh-task-cleaner`;
-    await renderView(root, route.view, ports, route.taskId);
+    try {
+      const hash = window.location.hash.replace(/^#/, "") || "/";
+      const route = resolveRoute(hash);
+      document.title = `${viewDefinition(route.view).title} · dsh-task-cleaner`;
+      await renderView(root, route.view, ports, route.taskId);
+    } catch (error) {
+      // Never let an uncaught hash/render error kill the event loop: show
+      // the view error state and keep the shell navigable.
+      const message = error instanceof Error ? error.message : String(error);
+      root.replaceChildren(errorState(message));
+    }
   };
   window.addEventListener("hashchange", () => {
     void render();
