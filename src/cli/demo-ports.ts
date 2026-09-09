@@ -47,7 +47,9 @@ export function createDemoPorts(): UxShellPorts {
     async applyQuarantine(): Promise<VmCommandResult> {
       return {
         command: "quarantine",
-        status: "succeeded",
+        // Framework baseline: no real quarantine path exists, so the stub
+        // reports a safe noop (exit 0) rather than pretending it acted.
+        status: "noop",
         summary: emptyCounts(),
         updatedAt: now(),
       };
@@ -55,7 +57,7 @@ export function createDemoPorts(): UxShellPorts {
     async applyRestore(): Promise<VmCommandResult> {
       return {
         command: "restore",
-        status: "succeeded",
+        status: "noop",
         summary: emptyCounts(),
         updatedAt: now(),
       };

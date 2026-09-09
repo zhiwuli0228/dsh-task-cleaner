@@ -74,6 +74,31 @@ describe("Web view definitions (§6.1/§4.3)", () => {
     assert.equal(resolveRoute("/nope").view, "overview");
   });
 
+  it("decodes URL-encoded task ids safely", () => {
+    const route = resolveRoute("/tasks/task%20with%20spaces/plan");
+    assert.equal(route.view, "plan");
+    assert.equal(route.taskId, "task with spaces");
+    // Plain spaces are normalized by browsers before resolveRoute, but
+    // explicit encoding must remain decodable when present.
+    assert.equal(resolveRoute("/tasks/task%2Fname/plan").view, "overview");
+  });
+
+  it("falls back to overview for malformed or hostile encoded routes", () => {
+    // Invalid percent-encoding must not throw (Review SUGGESTION).
+    assert.equal(resolveRoute("/tasks/%zz/plan").view, "overview");
+    // Encoded control characters (NUL/newline) must not reach a view model.
+    assert.equal(resolveRoute("/tasks/%00/plan").view, "overview");
+    assert.equal(resolveRoute("/tasks/%0A/plan").view, "overview");
+    // Encoded path traversal is not treated as a task identifier.
+    assert.equal(resolveRoute("/tasks/..%2F..%2Fetc/plan").view, "overview");
+    assert.equal(resolveRoute("/tasks/%2E%2E/plan").view, "overview");
+  });
+
+  it("does not throw when decoding malformed static-route segments", () => {
+    assert.doesNotThrow(() => resolveRoute("/%zz"));
+    assert.doesNotThrow(() => resolveRoute("/tasks/%E0%A4%A/plan"));
+  });
+
   it("confirmation reflects the exact selected count (R3/R2 wording)", () => {
     const confirmation = quarantineConfirmation({
       taskId: "tsk_1",

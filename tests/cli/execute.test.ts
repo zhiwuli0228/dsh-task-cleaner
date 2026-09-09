@@ -8,6 +8,7 @@ import {
 } from "../../src/shell/index.js";
 import {
   EXIT_OK,
+  EXIT_INTERRUPT,
   EXIT_PARTIAL,
   EXIT_RUNTIME_FAILURE,
   EXIT_SAFETY_DENY,
@@ -138,6 +139,78 @@ describe("CLI execution and exit codes (§5.4)", () => {
       context(ports),
     );
     assert.equal(output.exitCode, EXIT_PARTIAL);
+  });
+
+  it("maps port noop results to exit 0 (safe noop)", async () => {
+    const ports = portsWith({
+      applyQuarantine: async () => ({
+        command: "quarantine",
+        status: "noop",
+        summary: null,
+        updatedAt: "2026-09-09T12:00:00.000Z",
+      }),
+    });
+    const output = await runCliEntry(
+      ["quarantine", "--task-id", "t", "--candidate-id", "c"],
+      context(ports),
+    );
+    assert.equal(output.exitCode, EXIT_OK);
+    assert.ok(output.envelope);
+    assert.equal(output.envelope?.status, "noop");
+    assert.match(output.stdout, /quarantine: noop/);
+  });
+
+  it("maps port cancelled results to exit 130 (interrupt)", async () => {
+    const ports = portsWith({
+      applyRestore: async () => ({
+        command: "restore",
+        status: "cancelled",
+        summary: null,
+        updatedAt: "2026-09-09T12:00:00.000Z",
+      }),
+    });
+    const output = await runCliEntry(
+      ["restore", "--record-id", "rec_1"],
+      context(ports),
+    );
+    assert.equal(output.exitCode, EXIT_INTERRUPT);
+    assert.ok(output.envelope);
+    assert.equal(output.envelope?.status, "cancelled");
+  });
+
+  it("maps port denied results to exit 3 and reports the reason", async () => {
+    const ports = portsWith({
+      applyQuarantine: async () => ({
+        command: "quarantine",
+        status: "denied",
+        summary: null,
+        updatedAt: "2026-09-09T12:00:00.000Z",
+      }),
+    });
+    const output = await runCliEntry(
+      ["quarantine", "--task-id", "t", "--candidate-id", "c"],
+      context(ports),
+    );
+    assert.equal(output.exitCode, EXIT_SAFETY_DENY);
+    assert.equal(output.envelope?.status, "denied");
+  });
+
+  it("unknown port statuses fail closed instead of succeeding", async () => {
+    const ports = portsWith({
+      applyQuarantine: async () =>
+        ({
+          command: "quarantine",
+          status: "awaiting-decision",
+          summary: null,
+          updatedAt: "2026-09-09T12:00:00.000Z",
+        }) as never,
+    });
+    const output = await runCliEntry(
+      ["quarantine", "--task-id", "t", "--candidate-id", "c"],
+      context(ports),
+    );
+    assert.equal(output.exitCode, EXIT_RUNTIME_FAILURE);
+    assert.equal(output.envelope?.status, "failed");
   });
 
   it("maps port failures to exit code 1", async () => {

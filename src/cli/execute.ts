@@ -33,8 +33,18 @@ export const EXIT_SAFETY_DENY = 3;
 export const EXIT_PARTIAL = 4;
 export const EXIT_INTERRUPT = 130;
 
-/** Statuses the executor itself emits; other statuses come from ports. */
-type ExecutorStatus = "succeeded" | "failed" | "denied" | "partial" | "noop" | "plan-ready";
+/**
+ * Statuses the executor emits. Values come from ports or local decision;
+ * the mapping below defines their exit-code meaning (§5.4).
+ */
+type ExecutorStatus =
+  | "succeeded"
+  | "failed"
+  | "denied"
+  | "partial"
+  | "noop"
+  | "plan-ready"
+  | "cancelled";
 
 export interface CliOutput {
   exitCode: number;
@@ -148,6 +158,8 @@ function exitCodeFor(status: ExecutorStatus): number {
       return EXIT_SAFETY_DENY;
     case "partial":
       return EXIT_PARTIAL;
+    case "cancelled":
+      return EXIT_INTERRUPT;
     case "failed":
       return EXIT_RUNTIME_FAILURE;
     default:
@@ -309,9 +321,18 @@ function helpCommand(
 }
 
 function portStatus(status: VmStatus): ExecutorStatus {
-  if (status === "succeeded" || status === "partial") return status;
-  if (status === "denied") return "denied";
-  return "failed";
+  switch (status) {
+    case "succeeded":
+    case "partial":
+    case "denied":
+    case "noop":
+    case "cancelled":
+      return status;
+    default:
+      // Unknown/unexpected port status must fail closed rather than being
+      // reported as a success or silently downgraded (S-08).
+      return "failed";
+  }
 }
 
 /** Executes parsed arguments against injected ports (async port calls). */
