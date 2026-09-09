@@ -1,11 +1,22 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "types": ["node"],
     "noEmit": false,
-    "outDir": "dist",
-    "rootDir": ".",
-    "sourceMap": false
+    "outDir": "lib",
+    "rootDir": "src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
   },
-  "include": ["src/**/*.ts", "tools/governance/**/*.ts"],
-  "exclude": ["**/*.test.ts", "tools/governance/testdata/**"]
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "lib",
+    "dist",
+    "dist-web",
+    "coverage",
+    "tests",
+    "src/web/**"
+  ]
 }

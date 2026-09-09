@@ -1,29 +1,63 @@
 {
   "name": "dsh-task-cleaner",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": false,
   "description": "Safety-first task-scoped cleanup plugin for DeepSeek Harness",
   "license": "MIT",
   "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "specs",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json",
+    "build:web": "tsc -p tsconfig.web-build.json",
+    "build:governance": "tsc -p tsconfig.governance.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.web.json",
     "lint": "eslint .",
     "test": "vitest run",
     "test:governance": "vitest run tools/governance",
-    "preharness:layout": "npm run build",
-    "preharness:check": "npm run build",
-    "preharness:workflow": "npm run build",
+    "preharness:layout": "npm run build:governance",
+    "preharness:check": "npm run build:governance",
+    "preharness:workflow": "npm run build:governance",
     "harness:layout": "node ./dist/tools/governance/cli.js layout",
     "harness:check": "node ./dist/tools/governance/cli.js check",
     "harness:workflow": "node ./dist/tools/governance/cli.js workflow",
-    "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "demo:cli": "node lib/cli/main.js",
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run build && npm run build:web && npm run build:governance",
     "verify:harness": "pwsh -NoProfile -File ./scripts/verify-harness.ps1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-agent": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-goal": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-session": "^0.1.2-rc.1"
+  },
+  "dependencies": {
+    "schemastery": "^3.18.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
     "eslint": "^9.39.5",
-    "tsx": "^4.23.13",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.70.0",
     "vitest": "^4.1.11"

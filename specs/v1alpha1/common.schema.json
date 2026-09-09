@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common.schema.json",
+  "title": "dsh-task-cleaner common definitions",
+  "description": "Shared vocabulary for dsh-task-cleaner runtime data contracts (v1alpha1).",
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{64}$"
+    },
+    "relPath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Workspace-relative POSIX path; must not be absolute or contain drive/UNC prefixes."
+    },
+    "realPath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Absolute canonical path resolved by the plugin's FsPort; never accepted from external input."
+    },
+    "fileIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dev", "ino", "nlink", "ctime"],
+      "properties": {
+        "dev": { "type": "string" },
+        "ino": { "type": "string" },
+        "nlink": { "type": "integer", "minimum": 1 },
+        "ctime": { "$ref": "common.schema.json#/$defs/timestamp" }
+      }
+    },
+    "gitStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tracked", "head", "index"],
+      "properties": {
+        "tracked": { "type": "boolean" },
+        "head": { "type": "boolean" },
+        "index": { "type": "boolean" }
+      }
+    },
+    "symlink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target"],
+      "properties": {
+        "target": { "type": "string" }
+      }
+    }
+  }
+}
