@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { Config } from '../config.js';
 import type { CleanupPlan, RestoreResult } from '../domain/artifact.js';
-import type { AuditActor, AuditEvent, AuditOutcome, AuditPhase } from '../domain/audit-event.js';
-import { AUDIT_EVENT_SCHEMA_VERSION, QUARANTINE_RECORD_SCHEMA_VERSION } from '../domain/common.js';
+import type { AuditActor, AuditEvent, AuditOutcome, AuditPhase, AuditRefs } from '../domain/audit-event.js';
+import { AUDIT_EVENT_SCHEMA_VERSION } from '../domain/common.js';
 import type { QuarantineRecord } from '../domain/quarantine-record.js';
 import type { DecisionContext, SafetyDecisionSummary, SafetyKernel } from '../domain/safety-kernel.js';
 import type { AuditStorePort } from '../ports/audit-store.js';
@@ -37,9 +37,10 @@ export interface TaskStatus {
  * CleanupOrchestrator — application layer (ADR-002).
  *
  * This milestone ships NO real scanning/quarantine/restore/delete logic:
- * every method is a noop/stub that preserves the safety ordering invariants
- * (audit-before-action, quarantine write-before-move) and routes every
- * decision through the SafetyKernel, which is default-deny (S-01/S-07).
+ * every action preserves the safety ordering invariants (audit-before-action,
+ * quarantine write-before-move) and routes every decision through the
+ * SafetyKernel, which is default-deny (S-01/S-07). Quarantine and restore are
+ * both explicit denies; no file is ever moved.
  */
 export class CleanupOrchestrator {
   private readyFlag = false;
@@ -77,8 +78,8 @@ export class CleanupOrchestrator {
   }
 
   /**
-   * Noop quarantine. Writes the audit `intent` BEFORE any action, then records
-   * the default-deny outcome; nothing is ever moved in this milestone.
+   * Explicit deny. Writes the audit `intent` BEFORE any action, then records
+   * the denial; nothing is ever moved in this milestone (S-07).
    */
   async quarantine(plan: CleanupPlan, actor: AuditActor): Promise<QuarantineRecord | null> {
     const summary = await this.decide(plan);
@@ -86,51 +87,39 @@ export class CleanupOrchestrator {
 
     await this.appendAudit(plan, actor, { phase: 'quarantine', action: 'quarantine', outcome: 'intent', now });
 
-    if (summary.allowed === 0) {
-      await this.appendAudit(plan, actor, {
-        phase: 'quarantine',
-        action: 'quarantine',
-        outcome: 'denied',
-        now,
-        reason: 'default_deny_no_allowable_candidates',
-      });
-      return null;
-    }
-
-    // Real move + write-before-move staging is NOT implemented here; this
-    // branch is unreachable under the default-deny kernel and exists only to
-    // document the required ordering (S-05).
-    const record: QuarantineRecord = {
-      schemaVersion: QUARANTINE_RECORD_SCHEMA_VERSION,
-      quarantineId: randomUUID(),
-      taskId: plan.taskId,
-      runId: plan.runId,
-      manifestId: plan.manifestId,
-      decisionId: summary.decisions[0]?.decisionId ?? '',
-      createdAt: now,
-      status: 'pending',
-      entries: [],
-      restore: null,
-    };
-    await this.deps.quarantine.stage(record);
-    return this.deps.quarantine.commit(record.quarantineId);
+    const reason = summary.allowed === 0
+      ? 'default_deny_no_allowable_candidates'
+      : 'quarantine_not_implemented';
+    await this.appendAudit(plan, actor, { phase: 'quarantine', action: 'quarantine', outcome: 'denied', now, reason });
+    return null;
   }
 
   /** Noop restore: default-deny, no restore path ships in this milestone. */
   async restore(quarantineId: string, actor: AuditActor): Promise<RestoreResult> {
     const now = this.deps.clock.nowIso();
-    await this.appendAuditByIds('', '', actor, { phase: 'restore', action: 'restore', outcome: 'intent', now });
-    await this.appendAuditByIds('', '', actor, {
+    const record = await this.deps.quarantine.get(quarantineId);
+    const taskId = record?.taskId ?? '';
+    const runId = record?.runId ?? '';
+    const decisionId = record?.decisionId ?? '';
+
+    await this.appendAuditByIds(taskId, runId, actor, {
+      phase: 'restore',
+      action: 'restore',
+      outcome: 'intent',
+      now,
+    }, { quarantineId });
+    await this.appendAuditByIds(taskId, runId, actor, {
       phase: 'restore',
       action: 'restore',
       outcome: 'denied',
       now,
       reason: 'default_deny_restore_not_implemented',
-    });
+    }, { quarantineId });
+
     return {
       restoreId: randomUUID(),
       quarantineId,
-      decisionId: '',
+      decisionId,
       requestedBy: actor.id,
       requestedAt: now,
       result: 'denied',
@@ -175,13 +164,11 @@ export class CleanupOrchestrator {
     runId: string,
     actor: AuditActor,
     opts: { phase: AuditPhase; action: string; outcome: AuditOutcome; now: string; reason?: string },
-    refs?: { manifestId?: string; planId?: string },
+    refs?: AuditRefs,
   ): Promise<void> {
-    const existing = await this.deps.audit.read(runId);
-    const event: AuditEvent = {
+    const event: Omit<AuditEvent, 'seq'> = {
       schemaVersion: AUDIT_EVENT_SCHEMA_VERSION,
       eventId: randomUUID(),
-      seq: existing.length + 1,
       timestamp: opts.now,
       taskId,
       runId,
@@ -193,8 +180,10 @@ export class CleanupOrchestrator {
       dryRun: this.config.dryRun,
       targets: [],
       refs: {
-        manifestId: refs?.manifestId || undefined,
-        planId: refs?.planId || undefined,
+        manifestId: refs?.manifestId,
+        planId: refs?.planId,
+        quarantineId: refs?.quarantineId,
+        restoreId: refs?.restoreId,
       },
       failureReason: opts.outcome === 'denied' ? opts.reason ?? 'denied' : null,
       reason: opts.reason,

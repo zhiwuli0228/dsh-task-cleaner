@@ -6,10 +6,9 @@ import {
 } from '../src/adapter/dsh/version-gate.js';
 
 describe('checkDshVersion', () => {
-  test('accepts the supported baseline version', () => {
-    for (const version of SUPPORTED_DSH_VERSIONS) {
-      expect(() => checkDshVersion(version)).not.toThrow();
-    }
+  test('pins the supported baseline to the literal 0.1.2-rc.1', () => {
+    expect(SUPPORTED_DSH_VERSIONS).toEqual(['0.1.2-rc.1']);
+    expect(() => checkDshVersion('0.1.2-rc.1')).not.toThrow();
   });
 
   test('rejects an unsupported version (fail-closed)', () => {
