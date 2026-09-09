@@ -1,4 +1,4 @@
-import { formatBytes, pathLabel } from "../shell/index.js";
+import { escapeLabel, formatBytes, formatTimestamp, pathLabel } from "../shell/index.js";
 import type {
   VmAuditPage,
   VmConfigSummary,
@@ -14,9 +14,9 @@ import type {
 
 export function renderPlan(plan: VmPlan): string {
   const lines: string[] = [];
-  lines.push(`Dry-run plan  ${plan.planId}  (no changes written)`);
-  lines.push(`Task:        ${plan.taskId}`);
-  lines.push(`Workspace:   ${plan.scopeLabel || "-"}`);
+  lines.push(`Dry-run plan  ${escapeLabel(plan.planId)}  (no changes written)`);
+  lines.push(`Task:        ${escapeLabel(plan.taskId)}`);
+  lines.push(`Workspace:   ${escapeLabel(plan.scopeLabel || "-")}`);
   lines.push(
     `Candidates:  ${plan.summary.offered}  (${formatBytes(plan.summary.bytesOffered)})`,
   );
@@ -48,8 +48,8 @@ export function renderPlan(plan: VmPlan): string {
 
 export function renderStatus(status: VmTaskSummary): string {
   const lines = [
-    `Task:        ${status.taskId}`,
-    `Workspace:   ${status.workspaceLabel || "-"}`,
+    `Task:        ${escapeLabel(status.taskId)}`,
+    `Workspace:   ${escapeLabel(status.workspaceLabel || "-")}`,
     `Cleanup:     ${status.cleanupState}`,
     `Candidates:  ${status.counts.offered} offered, ${status.counts.quarantined} quarantined, ` +
       `${status.counts.restored} restored`,
@@ -64,7 +64,7 @@ export function renderQuarantine(records: VmQuarantineRecord[]): string {
     const marker = record.restored ? "[restored]" : "[quarantined]";
     lines.push(
       `${marker} ${record.originalPathLabel}  ->  ${record.quarantinePathLabel}  ` +
-        `(${record.recordId}, ${formatBytes(record.sizeBytes)})`,
+        `(${escapeLabel(record.recordId)}, ${formatBytes(record.sizeBytes)})`,
     );
   }
   return `${lines.join("\n")}\n`;
@@ -75,8 +75,9 @@ export function renderAudit(page: VmAuditPage): string {
   const lines = ["Audit events (newest first):"];
   for (const event of page.events) {
     lines.push(
-      `${event.ts}  ${event.taskId ?? "-"}  ${event.actor}  ${event.eventType}  ` +
-        `${event.outcome}  ${event.scopeLabel}`,
+      `${formatTimestamp(event.ts)}  ${escapeLabel(event.taskId ?? "-")}  ` +
+        `${escapeLabel(event.actor)}  ${escapeLabel(event.eventType)}  ` +
+        `${event.outcome}  ${escapeLabel(event.scopeLabel)}`,
     );
   }
   if (page.nextCursor) lines.push(`Next cursor: ${page.nextCursor}`);
@@ -86,9 +87,9 @@ export function renderAudit(page: VmAuditPage): string {
 export function renderConfig(config: VmConfigSummary): string {
   return [
     `dryRun default:  ${config.dryRunDefault ? "true" : "false"}`,
-    `workspace root:  ${config.workspaceRootLabel || "-"}`,
+    `workspace root:  ${escapeLabel(config.workspaceRootLabel || "-")}`,
     `protected rules: ${config.protectedPatternCount}`,
-    `plugin version:  ${config.version}`,
+    `plugin version:  ${escapeLabel(config.version)}`,
     `configuration editing is not available in this baseline (read-only)`,
   ].join("\n") + "\n";
 }

@@ -18,11 +18,15 @@ export function formatBytes(bytes: number): string {
   return `${value.toFixed(digits)} ${unit}`;
 }
 
-/** RFC 3339 -> local display label; unknown/empty falls back to "-". */
+/**
+ * RFC 3339 -> local display label; unknown/empty falls back to "-".
+ * Malformed input is never echoed back raw (SecurityReview MINOR-5);
+ * it renders as a neutral placeholder instead.
+ */
 export function formatTimestamp(iso: string | null): string {
   if (!iso) return "-";
   const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return iso;
+  if (Number.isNaN(parsed.getTime())) return "[invalid timestamp]";
   const pad = (n: number, width = 2): string => String(n).padStart(width, "0");
   return (
     `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())} ` +
