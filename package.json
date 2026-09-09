@@ -6,7 +6,26 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:governance": "vitest run tools/governance",
+    "preharness:layout": "npm run build",
+    "preharness:check": "npm run build",
+    "preharness:workflow": "npm run build",
+    "harness:layout": "node ./dist/tools/governance/cli.js layout",
+    "harness:check": "node ./dist/tools/governance/cli.js check",
+    "harness:workflow": "node ./dist/tools/governance/cli.js workflow",
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "verify:harness": "pwsh -NoProfile -File ./scripts/verify-harness.ps1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "eslint": "^9.39.5",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^4.1.11"
   }
 }

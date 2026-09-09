@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dsh-task-cleaner Traceability Ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "entries"],
+  "properties": {
+    "schema_version": {"const": "dsh-task-cleaner/traceability/v1alpha1"},
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requirement_id", "status", "requirements", "specs", "tasks", "code", "verification", "traces"],
+        "properties": {
+          "requirement_id": {"type": "string", "pattern": "^[A-Z]+-[0-9]{3}$"},
+          "milestone": {"type": "string"},
+          "status": {"enum": ["planned", "specified", "implemented", "acceptance_pending", "accepted", "blocked"]},
+          "requirements": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "specs": {"type": "array", "items": {"type": "string"}},
+          "tasks": {"type": "array", "items": {"type": "string"}},
+          "code": {"type": "array", "items": {"type": "string"}},
+          "verification": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "mode", "status"],
+              "properties": {
+                "path": {"type": "string"},
+                "mode": {"enum": ["declarative", "unit", "integration", "e2e", "manual", "ci"]},
+                "status": {"enum": ["passed", "failed", "pending", "missing"]}
+              }
+            }
+          },
+          "traces": {"type": "array", "items": {"type": "string"}},
+          "human_gate": {"type": "string"},
+          "gaps": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  }
+}

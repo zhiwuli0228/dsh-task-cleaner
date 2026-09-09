@@ -1,0 +1,53 @@
+{
+  "schema_version": "dsh-task-cleaner/closed-loop-registry/v1alpha1",
+  "changes": [
+    {
+      "change_id": "harness-framework-baseline",
+      "state_path": "docs/harness/changes/harness-framework-baseline/state.json",
+      "covered_paths": [
+        "docs/harness/WORKFLOW.md",
+        "docs/harness/DONE_DEFINITION.md",
+        "docs/harness/CHECKLIST.md",
+        "docs/harness/TOOL_POLICY.md",
+        "docs/harness/traceability.schema.json",
+        "docs/harness/closed-loop-registry.json",
+        "docs/harness/human-gates.json",
+        "docs/harness/discovery-baseline.json",
+        "docs/harness/templates/human-gate.md",
+        "docs/harness/templates/plan.md",
+        "docs/harness/templates/review.md",
+        "docs/harness/templates/superspec.md",
+        "docs/harness/templates/trace.md",
+        "docs/harness/templates/verification.md",
+        "docs/harness/task-templates/design-task.md",
+        "docs/harness/task-templates/implementation-task.md",
+        "docs/harness/traces/traceability-ledger.json",
+        "docs/harness/changes/.gitkeep",
+        "docs/harness/snapshots/.gitkeep",
+        "docs/harness/traces/snapshots/.gitkeep",
+        "docs/harness/changes/harness-framework-baseline/classification.md",
+        "docs/harness/changes/harness-framework-baseline/state.json",
+        ".gitattributes",
+        ".codex/skills/closed-loop-engineering/SKILL.md",
+        "tools/governance/types.ts",
+        "tools/governance/index.ts",
+        "tools/governance/layout-guard.ts",
+        "tools/governance/workflow-checker.ts",
+        "tools/governance/cli.ts",
+        "tools/governance/README.md",
+        "tools/governance/index.test.ts",
+        "tools/governance/layout-guard.test.ts",
+        "tools/governance/workflow-checker.test.ts",
+        "scripts/dev.ps1",
+        "scripts/verify-harness.ps1",
+        ".github/workflows/ci.yml",
+        "package.json",
+        "package-lock.json",
+        "tsconfig.json",
+        "tsconfig.build.json",
+        "eslint.config.js",
+        ".gitignore"
+      ]
+    }
+  ]
+}
