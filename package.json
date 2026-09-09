@@ -1,0 +1,12 @@
+{
+  "name": "dsh-task-cleaner",
+  "version": "0.0.0",
+  "private": false,
+  "description": "Safety-first task-scoped cleanup plugin for DeepSeek Harness",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  }
+}
