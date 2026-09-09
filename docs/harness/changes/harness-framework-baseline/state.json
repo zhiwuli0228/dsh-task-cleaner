@@ -9,7 +9,7 @@
       "id": "harness-framework-baseline-classification",
       "type": "classification",
       "path": "docs/harness/changes/harness-framework-baseline/classification.md",
-      "sha256": "8e40c16a397b4ad989c31425e40d3011bb1e78384920ae66f40c201126334f34",
+      "sha256": "48b1107cb7637f570b6162d85f9c981cfe85465a8795eea5baeeda1c4eb9a962",
       "producer_phase": "registered",
       "depends_on": []
     }
