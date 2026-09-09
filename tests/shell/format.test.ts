@@ -20,7 +20,14 @@ describe("format helpers", () => {
   it("formats RFC 3339 timestamps and keeps invalid values visible", () => {
     assert.match(formatTimestamp("2026-09-09T12:00:00.000Z"), /^2026-09-09 20:00:00$/);
     assert.equal(formatTimestamp(null), "-");
-    assert.equal(formatTimestamp("not-a-date"), "not-a-date");
+    // Malformed input is never echoed raw (SecurityReview MINOR-5); a
+    // neutral placeholder is shown instead.
+    assert.equal(formatTimestamp("not-a-date"), "[invalid timestamp]");
+    assert.equal(formatTimestamp(""), "-");
+    assert.equal(
+      formatTimestamp("2026-09-09T12:00:00.000Z\nESC[31m"),
+      "[invalid timestamp]",
+    );
   });
 
   it("escapes control characters and path separators in labels", () => {
