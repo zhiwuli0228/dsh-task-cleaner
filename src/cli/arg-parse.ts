@@ -119,7 +119,7 @@ const EMPTY_ALLOW = Object.freeze({
   allowPositional: [],
 });
 
-function takeValue(argv: string[], index: number, flag: string): string | null {
+function takeValue(argv: string[], index: number, _flag: string): string | null {
   const raw = argv[index + 1];
   if (raw === undefined || raw.startsWith("-")) return null;
   return raw;

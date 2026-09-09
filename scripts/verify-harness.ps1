@@ -12,7 +12,9 @@ function Invoke-GovernanceStep([string]$Label, [scriptblock]$Body) {
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Push-Location $repoRoot
 try {
-    Invoke-GovernanceStep "build governance CLI" { npm run build }
+    Invoke-GovernanceStep "build runtime" { npm run build }
+    Invoke-GovernanceStep "build web" { npm run build:web }
+    Invoke-GovernanceStep "build governance CLI" { npm run build:governance }
     Invoke-GovernanceStep "workflow-checker" { node ./dist/tools/governance/cli.js workflow --root $repoRoot }
     Invoke-GovernanceStep "governance unit tests" { npm run test:governance }
     Invoke-GovernanceStep "traceability/accepted-document check" { node ./dist/tools/governance/cli.js check --root $repoRoot }

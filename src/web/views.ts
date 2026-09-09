@@ -120,7 +120,7 @@ export function viewDefinition(view: WebViewName): ViewDefinition<WebViewName> {
 /** Stable empty/error model per view (used by contract tests and mount). */
 export function emptyStateFor(
   view: WebViewName,
-  message: string,
+  _message: string,
 ): Extract<WebViewState, { view: WebViewName }> {
   return {
     view,

@@ -1,4 +1,4 @@
-import { AUDIT_EVENT_SCHEMA_VERSION } from './common.js';
+import type { AUDIT_EVENT_SCHEMA_VERSION } from './common.js';
 import type { Timestamp } from './common.js';
 
 export type AuditPhase = 'discover' | 'plan' | 'approve' | 'quarantine' | 'restore' | 'expire' | 'purge' | 'reconcile';

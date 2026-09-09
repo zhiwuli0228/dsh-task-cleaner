@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { resolveRoute, viewDefinition, VIEW_DEFINITIONS } from "../../src/web/views.js";
 import { quarantineConfirmation, selectedCandidates } from "../../src/web/confirm.js";

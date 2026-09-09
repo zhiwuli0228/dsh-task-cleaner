@@ -18,7 +18,6 @@ import {
   renderConfig,
   renderHelp,
   renderPlan,
-  renderQuarantine,
   renderStatus,
 } from "./render-text.js";
 

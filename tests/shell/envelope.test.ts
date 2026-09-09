@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { buildEnvelope } from "../../src/shell/json-envelope.js";
 import type { VmPlan } from "../../src/shell/vm-types.js";

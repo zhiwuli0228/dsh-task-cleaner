@@ -1,4 +1,4 @@
-import { QUARANTINE_RECORD_SCHEMA_VERSION } from './common.js';
+import type { QUARANTINE_RECORD_SCHEMA_VERSION } from './common.js';
 import type {
   FileIdentity,
   GitStatus,

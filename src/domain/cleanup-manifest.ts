@@ -1,5 +1,5 @@
 import type { ArtifactCandidate } from './artifact.js';
-import { CLEANUP_MANIFEST_SCHEMA_VERSION } from './common.js';
+import type { CLEANUP_MANIFEST_SCHEMA_VERSION } from './common.js';
 import type { Sha256Hex, Timestamp } from './common.js';
 
 export type ManifestStatus = 'draft' | 'frozen' | 'applied' | 'closed' | 'superseded';

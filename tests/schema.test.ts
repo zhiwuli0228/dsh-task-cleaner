@@ -4,9 +4,15 @@ import { describe, expect, test } from 'vitest';
 
 const SCHEMA_FILES = ['common', 'cleanup-manifest', 'audit-event', 'quarantine-record'] as const;
 
-function load(name: string): Record<string, any> {
+interface JsonSchema {
+  $schema?: string;
+  additionalProperties?: unknown;
+  properties?: Record<string, { const?: unknown }>;
+}
+
+function load(name: string): JsonSchema {
   const path = join(process.cwd(), 'specs', 'v1alpha1', `${name}.schema.json`);
-  return JSON.parse(readFileSync(path, 'utf8'));
+  return JSON.parse(readFileSync(path, 'utf8')) as JsonSchema;
 }
 
 function raw(name: string): string {
@@ -32,7 +38,7 @@ describe('specs/v1alpha1 schemas', () => {
     for (const [name, version] of Object.entries(expected)) {
       const schema = load(name);
       expect(schema.additionalProperties).toBe(false);
-      expect(schema.properties.schema_version.const).toBe(version);
+      expect(schema.properties?.schema_version?.const).toBe(version);
     }
   });
 

@@ -40,8 +40,8 @@ jobs:
       - name: Tests
         run: npm test
 
-      - name: Build
-        run: npm run build
+      - name: Build (runtime / web / governance)
+        run: npm run build && npm run build:web && npm run build:governance
 
       - name: Harness layout guard (no root-level .harness regression)
         run: npm run harness:layout

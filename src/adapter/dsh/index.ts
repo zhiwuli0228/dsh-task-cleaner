@@ -1,4 +1,4 @@
-import type { Context, Plugin } from '@deepseek-ai/cordis';
+import type { Context } from '@deepseek-ai/cordis';
 import type { Agent } from '@deepseek-ai/dsh-agent';
 import type { GoalChanged } from '@deepseek-ai/dsh-goal';
 import type { Session } from '@deepseek-ai/dsh-session';
@@ -49,10 +49,11 @@ const apply = (ctx: Context, config: Config): void => {
   );
 };
 
-export const plugin: Plugin.Function = Object.assign(apply, {
-  name: 'dsh-task-cleaner',
-  Config: ConfigSchema,
-});
+export const plugin = Object.defineProperty(apply, 'name', {
+  value: 'dsh-task-cleaner',
+  configurable: true,
+}) as typeof apply & { Config: typeof ConfigSchema };
+plugin.Config = ConfigSchema;
 
 export default plugin;
 export { apply };
