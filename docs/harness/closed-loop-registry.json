@@ -108,6 +108,7 @@
         "src/web/views.ts",
         "tests/cli/arg-parse.test.ts",
         "tests/cli/execute.test.ts",
+        "tests/cli/render-text.test.ts",
         "tests/config.test.ts",
         "tests/config-validation.test.ts",
         "tests/audit-store.test.ts",
