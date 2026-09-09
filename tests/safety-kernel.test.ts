@@ -68,4 +68,24 @@ describe('DefaultDenySafetyKernel', () => {
     expect(summary.denied).toBe(0);
     expect(summary.review).toBe(0);
   });
+
+  test('generates a fresh decisionId per decision, independent of the candidate (MINOR-1)', () => {
+    const summary = new DefaultDenySafetyKernel().decide(
+      plan([candidate('c1', 'data-layer-id')]),
+      context,
+    );
+
+    const decision = summary.decisions[0];
+    expect(decision.decisionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    expect(decision.decisionId).not.toBe('data-layer-id');
+  });
+
+  test('emits distinct decisionIds for distinct candidates (MINOR-1)', () => {
+    const summary = new DefaultDenySafetyKernel().decide(
+      plan([candidate('c1', 'd1'), candidate('c2', 'd2')]),
+      context,
+    );
+
+    expect(summary.decisions[0].decisionId).not.toBe(summary.decisions[1].decisionId);
+  });
 });

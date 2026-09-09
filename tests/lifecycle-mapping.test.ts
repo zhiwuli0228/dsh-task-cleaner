@@ -69,6 +69,40 @@ describe('goalChangedToEvent', () => {
       }),
     ).toBeNull();
   });
+
+  test('returns null when agent.id is missing or empty (M2)', () => {
+    const base = { change: change('create', 'goal-1', 1), seq: 1, timestamp: 0 };
+    expect(goalChangedToEvent({ ...base, agent: {} as unknown as Agent })).toBeNull();
+    expect(goalChangedToEvent({ ...base, agent: { id: '' } as unknown as Agent })).toBeNull();
+    expect(goalChangedToEvent({ ...base, agent: null as unknown as Agent })).toBeNull();
+  });
+
+  test('returns null when the operation is not a valid GoalOperation (M2)', () => {
+    expect(
+      goalChangedToEvent({
+        agent: agent('session-1'),
+        change: { operation: 'nope', ref: { id: 'goal-1', revision: 1 } } as unknown as GoalChanged,
+        seq: 1,
+        timestamp: 0,
+      }),
+    ).toBeNull();
+  });
+
+  test('returns null when the goal ref is malformed (M2)', () => {
+    const badRefs = [
+      { operation: 'create', ref: undefined },
+      { operation: 'create', ref: { id: '', revision: 1 } },
+      { operation: 'create', ref: { id: 'goal-1', revision: 'x' } },
+      { operation: 'create', ref: { id: 'goal-1', revision: Number.NaN } },
+      { operation: 'create', ref: null },
+    ] as unknown as GoalChanged[];
+
+    for (const changeValue of badRefs) {
+      expect(
+        goalChangedToEvent({ agent: agent('session-1'), change: changeValue, seq: 1, timestamp: 0 }),
+      ).toBeNull();
+    }
+  });
 });
 
 describe('sessionDisposedToEvent', () => {
@@ -79,14 +113,21 @@ describe('sessionDisposedToEvent', () => {
       timestamp: 1_700_000_000_000,
     });
 
-    expect(event.phase).toBe('aborted');
-    expect(event.source).toBe('session');
-    expect(event.seq).toBe(9);
-    expect(event.scope).toEqual({
+    expect(event).not.toBeNull();
+    expect(event!.phase).toBe('aborted');
+    expect(event!.source).toBe('session');
+    expect(event!.seq).toBe(9);
+    expect(event!.scope).toEqual({
       kind: 'session',
       sessionId: 'session-1',
       cwd: '/workspace',
       timestamp: 1_700_000_000_000,
     });
+  });
+
+  test('returns null when session.id is missing or empty (M2)', () => {
+    expect(sessionDisposedToEvent({ session: {} as unknown as Session, seq: 1, timestamp: 0 })).toBeNull();
+    expect(sessionDisposedToEvent({ session: { id: '' } as unknown as Session, seq: 1, timestamp: 0 })).toBeNull();
+    expect(sessionDisposedToEvent({ session: null as unknown as Session, seq: 1, timestamp: 0 })).toBeNull();
   });
 });

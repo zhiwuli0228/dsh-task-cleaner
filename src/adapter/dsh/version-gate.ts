@@ -1,5 +1,5 @@
 /**
- * DSH host version gate (fail-closed, S-06). The plugin refuses to load
+ * DSH host version gate (fail-closed, T-10). The plugin refuses to load
  * against an unverified host version rather than risk silently missing or
  * misreading lifecycle signals.
  *
