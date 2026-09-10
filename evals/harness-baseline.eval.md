@@ -30,14 +30,29 @@ Declarative acceptance checks for LZWW-2「建立 Harness 标准框架基线」.
   the specific reason code:
   - path missing → `missing_real_path`
   - lstat/realpath failure → `unresolvable_path`
+  - empty/absolute/escaping relPath → `invalid_rel_path`
+  - any `.git` path segment → `git_internal_path`
   - symlink/junction → `symlink_not_followed`
   - canonical path outside the workspace root → `outside_workspace`
-  - dev/ino mismatch → `identity_mismatch`
+  - relPath and sourceRealPath disagree → `rel_path_unbound`
+  - dev/ino/size/mtime mismatch → `identity_mismatch`
+  - hardlink (nlink > 1) → `hardlink_not_allowed`
   - Git tracked (HEAD or index) → `git_tracked`
 - AND a candidate that passes every predicate still falls through to
   `not_implemented_default_deny` (no positive cleanup path in this milestone)
 - EVIDENCE: `tests/safety-kernel.test.ts`,
   `tests/protection-integration.test.ts`
+
+## E6 — Git protection fails closed
+
+- WHEN the workspace is a subdirectory of a parent repository, or `.git`
+  exists but Git cannot answer (broken repository, permission error, timeout,
+  missing executable)
+- THEN `NodeGitPort.status` reports the path as protected (`tracked: true`)
+  rather than untracked
+- AND only a confirmed "not a git repository" path with no `.git` entry in any
+  ancestor reports `tracked: false`
+- EVIDENCE: `tests/protection-integration.test.ts`
 
 ## E5 — DSH plugin loads
 
