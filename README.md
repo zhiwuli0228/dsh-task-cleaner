@@ -4,7 +4,14 @@ A safety-first DeepSeek Harness plugin for task-scoped workspace cleanup.
 
 ## Status
 
-Project initialization. The first milestone will define task lifecycle integration, artifact classification, dry-run reports, quarantine, restore, and audited cleanup.
+Framework baseline (`chore/harness-framework-baseline`). The repository ships
+the Harness governance root, the DSH plugin entry, domain/ports/app layers,
+CLI/Web shells, the governance toolchain, and a fail-closed safety kernel whose
+candidate decisions are backed by real filesystem and Git predicates
+(`realpath`, workspace containment, symlink refusal, identity matching,
+tracked-file protection). It intentionally implements no real scan/quarantine/
+restore/delete behavior; every positive cleanup action remains unimplemented
+and denied.
 
 ## Safety principles
 
