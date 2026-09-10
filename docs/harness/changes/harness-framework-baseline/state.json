@@ -1,0 +1,21 @@
+{
+  "schema_version": "dsh-task-cleaner/closed-loop/v1alpha1",
+  "change_id": "harness-framework-baseline",
+  "base_revision": "268e708c16a3b1b90a6fe1cb862b9c7cc4f12181",
+  "phase": "registered",
+  "history": ["registered"],
+  "artifacts": [
+    {
+      "id": "harness-framework-baseline-classification",
+      "type": "classification",
+      "path": "docs/harness/changes/harness-framework-baseline/classification.md",
+      "sha256": "48b1107cb7637f570b6162d85f9c981cfe85465a8795eea5baeeda1c4eb9a962",
+      "producer_phase": "registered",
+      "depends_on": []
+    }
+  ],
+  "reviews": [],
+  "findings": [],
+  "gates": [],
+  "external_acceptance": "not_required"
+}

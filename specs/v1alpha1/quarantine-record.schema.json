@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "quarantine-record.schema.json",
+  "title": "dsh-task-cleaner quarantine record (v1alpha1)",
+  "description": "R3: per-batch metadata describing where each item came from, where it was staged, its identity/hash, the sourcing decision, and whether it can be restored.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "quarantine_id",
+    "task_id",
+    "run_id",
+    "manifest_id",
+    "decision_id",
+    "created_at",
+    "status",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": { "const": "dsh-task-cleaner/quarantine/v1alpha1" },
+    "quarantine_id": { "$ref": "common.schema.json#/$defs/uuid" },
+    "task_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "manifest_id": { "$ref": "common.schema.json#/$defs/uuid" },
+    "decision_id": { "type": "string", "minLength": 1 },
+    "created_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "status": {
+      "enum": ["pending", "quarantined", "restore_pending", "restored", "expired", "purged", "reconciliation_required"]
+    },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "quarantine-record.schema.json#/$defs/entry" }
+    },
+    "restore": {
+      "anyOf": [
+        { "$ref": "quarantine-record.schema.json#/$defs/restore" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_id",
+        "candidate_id",
+        "source_rel_path",
+        "source_real_path",
+        "quarantine_rel_path",
+        "kind",
+        "identity",
+        "sha256_before",
+        "size_bytes",
+        "mtime",
+        "mode",
+        "git_status",
+        "symlink_target",
+        "state"
+      ],
+      "properties": {
+        "entry_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "candidate_id": { "type": "string", "minLength": 1 },
+        "source_rel_path": { "$ref": "common.schema.json#/$defs/relPath" },
+        "source_real_path": { "$ref": "common.schema.json#/$defs/realPath" },
+        "quarantine_rel_path": {
+          "$ref": "common.schema.json#/$defs/relPath",
+          "description": "Path of the staged item relative to the quarantine area root; same relative-path rules as source_rel_path, so traversal/../ escape is rejected (MAJOR-02)."
+        },
+        "kind": { "enum": ["file", "directory", "symlink"] },
+        "identity": { "$ref": "common.schema.json#/$defs/fileIdentity" },
+        "sha256_before": { "$ref": "common.schema.json#/$defs/sha256" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "mtime": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "mode": { "type": "string", "minLength": 1 },
+        "git_status": { "$ref": "common.schema.json#/$defs/gitStatus" },
+        "symlink_target": { "type": ["string", "null"] },
+        "state": { "enum": ["staged", "verified", "restored", "expired", "purged", "missing"] }
+      }
+    },
+    "restore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["restore_id", "decision_id", "requested_by", "requested_at", "result", "failures"],
+      "properties": {
+        "restore_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "decision_id": { "type": "string", "minLength": 1 },
+        "requested_by": { "type": "string", "minLength": 1 },
+        "requested_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "result": { "enum": ["pending", "succeeded", "partial_failed", "denied"] },
+        "failures": {
+          "type": "array",
+          "items": { "$ref": "quarantine-record.schema.json#/$defs/failure" }
+        }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry_id", "reason"],
+      "properties": {
+        "entry_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

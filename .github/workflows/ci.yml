@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The closed-loop workflow checker resolves the discovery baseline
+          # revision (docs/harness/discovery-baseline.json) and requires it to
+          # be an ancestor of HEAD, so the default shallow clone is not enough.
+          fetch-depth: 0
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Use npm 11 (npm 10 resolver crash workaround)
+        run: npm install --global npm@11
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Build (runtime / web / governance)
+        run: npm run build && npm run build:web && npm run build:governance
+
+      - name: Harness layout guard (no root-level .harness regression)
+        run: npm run harness:layout
+
+      - name: Full harness verification (when governance records are present)
+        if: hashFiles('docs/harness/traces/traceability-ledger.json') != '' && hashFiles('docs/harness/human-gates.json') != '' && hashFiles('docs/harness/discovery-baseline.json') != ''
+        shell: pwsh
+        run: ./scripts/verify-harness.ps1

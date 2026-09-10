@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cleanup-manifest.schema.json",
+  "title": "dsh-task-cleaner cleanup manifest (v1alpha1)",
+  "description": "R1: per-run artifacts inventory snapshot. Persists what was recognized, on what basis, and the resulting decision/disposition.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "task_id",
+    "run_id",
+    "dsh_version",
+    "plugin_version",
+    "scope",
+    "created_at",
+    "status",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": { "const": "dsh-task-cleaner/manifest/v1alpha1" },
+    "manifest_id": { "$ref": "common.schema.json#/$defs/uuid" },
+    "task_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "dsh_version": { "type": "string", "minLength": 1 },
+    "plugin_version": { "type": "string", "minLength": 1 },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace_root_rel", "root_anchor"],
+      "properties": {
+        "workspace_root_rel": { "type": "string", "minLength": 1 },
+        "root_anchor": { "$ref": "common.schema.json#/$defs/sha256" },
+        "boundary_policy_ref": { "type": "string" }
+      }
+    },
+    "created_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "status": { "enum": ["draft", "frozen", "applied", "closed", "superseded"] },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "cleanup-manifest.schema.json#/$defs/artifact" }
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "candidate_id",
+        "decision_id",
+        "rel_path",
+        "kind",
+        "provenance",
+        "identity",
+        "size_bytes",
+        "sha256",
+        "mtime",
+        "mode",
+        "git_tracked",
+        "symlink",
+        "matched_by",
+        "state"
+      ],
+      "properties": {
+        "artifact_id": { "$ref": "common.schema.json#/$defs/uuid" },
+        "candidate_id": { "type": "string", "minLength": 1 },
+        "decision_id": { "type": "string", "minLength": 1 },
+        "rel_path": { "$ref": "common.schema.json#/$defs/relPath" },
+        "source_real_path": { "$ref": "common.schema.json#/$defs/realPath" },
+        "kind": { "enum": ["temp", "intermediate", "cache", "build", "generated", "unknown"] },
+        "provenance": { "enum": ["baseline_diff", "task_write", "git_untracked", "declared", "unknown"] },
+        "identity": { "$ref": "common.schema.json#/$defs/fileIdentity" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "mtime": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "mode": { "type": "string", "minLength": 1 },
+        "git_tracked": { "type": "boolean" },
+        "symlink": {
+          "anyOf": [
+            { "$ref": "common.schema.json#/$defs/symlink" },
+            { "type": "null" }
+          ]
+        },
+        "matched_by": { "type": "array", "items": { "type": "string" } },
+        "state": {
+          "enum": [
+            "candidate",
+            "planned_keep",
+            "planned_quarantine",
+            "quarantined",
+            "restored",
+            "expired",
+            "purged",
+            "skipped"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+# Review Checklist
+
+- [ ] Requirement → Spec → Task → Code → Test/Eval → Trace 六段双向可追踪
+- [ ] Plan 与 Superspec 在实现前建立并引用稳定 Requirement ID
+- [ ] Eval-red 已建立；声明式 baseline 未冒充已执行验收
+- [ ] 未扩大 MVP 范围
+- [ ] Finding/Hypothesis 引用关系有效
+- [ ] 未暴露任意命令、参数或 URL
+- [ ] Secret 仅以 reference 表示
+- [ ] 持久化前完成 redaction
+- [ ] 成功、失败和拒绝均审计
+- [ ] timeout、大小与时间范围有界
+- [ ] 路径被限制在 workspace
+- [ ] 本地逻辑兼容 Windows
+- [ ] 测试和 eval 覆盖失败路径
+- [ ] 独立 Review 已覆盖 correctness、security、spec、tests、compatibility 和 traceability
+- [ ] Verification 记录了环境、命令、结果和 skipped checks
+- [ ] 缺少真实环境时状态为 acceptance_pending
+- [ ] Accepted/ADR/里程碑状态具有注册 Human Gate
+- [ ] `./scripts/verify-harness.ps1` 通过
+- [ ] 仓库根无 `.harness/`，治理工件全部位于 `docs/harness/`

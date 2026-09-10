@@ -1,8 +1,13 @@
 # Dependencies and build output
 node_modules/
+lib/
 dist/
+dist-web/
 build/
 coverage/
+.npm-cache*/
+.dsh-home/
+.dsh-smoke/
 
 # Secrets and local configuration
 .env
