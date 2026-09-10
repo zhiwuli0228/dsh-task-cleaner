@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Config } from '../config.js';
 import type { CleanupPlan, RestoreResult } from '../domain/artifact.js';
 import type { AuditActor, AuditEvent, AuditOutcome, AuditPhase, AuditRefs } from '../domain/audit-event.js';
-import { AUDIT_EVENT_SCHEMA_VERSION } from '../domain/common.js';
+import { AUDIT_EVENT_SCHEMA_VERSION, type RealPath } from '../domain/common.js';
 import type { QuarantineRecord } from '../domain/quarantine-record.js';
 import type { DecisionContext, SafetyDecisionSummary, SafetyKernel } from '../domain/safety-kernel.js';
 import type { AuditStorePort } from '../ports/audit-store.js';
@@ -59,6 +59,17 @@ export class CleanupOrchestrator {
     this.readyFlag = true;
   }
 
+  /**
+   * Workspace pre-flight through the real FsPort (S-02): resolve the root and
+   * validate it (absolute existing directory, not fs root / home / .git /
+   * symlink, not equal to or containing the quarantine root). Activation calls
+   * this so the runtime is not an idle assembly.
+   */
+  async validateWorkspace(workspaceRoot: string): Promise<void> {
+    const canonical: RealPath = await this.deps.fs.realpath(workspaceRoot);
+    await this.deps.fs.validateWorkspaceRoot(canonical);
+  }
+
   /** Noop plan: no discovery implemented, so the plan is always empty and frozen. */
   async plan(taskId: string, runId: string): Promise<CleanupPlan> {
     return {
@@ -98,9 +109,20 @@ export class CleanupOrchestrator {
   async restore(quarantineId: string, actor: AuditActor): Promise<RestoreResult> {
     const now = this.deps.clock.nowIso();
     const record = await this.deps.quarantine.get(quarantineId);
-    const taskId = record?.taskId ?? '';
-    const runId = record?.runId ?? '';
-    const decisionId = record?.decisionId ?? '';
+    if (record === null) {
+      // Without a record there is no trustworthy task/run attribution, so no
+      // audit event with empty identifiers is written (legacy MINOR).
+      return {
+        restoreId: randomUUID(),
+        quarantineId,
+        decisionId: '',
+        requestedBy: actor.id,
+        requestedAt: now,
+        result: 'denied',
+        failures: [{ entryId: '', candidateId: '', reason: 'quarantine_not_found' }],
+      };
+    }
+    const { taskId, runId, decisionId } = record;
 
     await this.appendAuditByIds(taskId, runId, actor, {
       phase: 'restore',

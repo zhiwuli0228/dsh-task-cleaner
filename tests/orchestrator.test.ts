@@ -97,4 +97,18 @@ describe('CleanupOrchestrator', () => {
     expect(events[1].seq).toBe(2);
     expect(events[1].outcome).toBe('denied');
   });
+
+  test('restore of an unknown quarantine id is denied without empty-identifier audit events', async () => {
+    const audit = new InMemoryAuditStore();
+    const quarantine = new InMemoryQuarantineStore();
+    const orchestrator = new CleanupOrchestrator(deps(audit, quarantine), config());
+
+    const result = await orchestrator.restore('missing', { type: 'user', id: 'u1' });
+
+    expect(result.result).toBe('denied');
+    expect(result.failures).toEqual([
+      { entryId: '', candidateId: '', reason: 'quarantine_not_found' },
+    ]);
+    expect(await audit.read('run-1')).toHaveLength(0);
+  });
 });

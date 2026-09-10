@@ -4,7 +4,7 @@ import type { GoalChanged } from '@deepseek-ai/dsh-goal';
 import type { Session } from '@deepseek-ai/dsh-session';
 import { ConfigSchema, type Config } from '../../config.js';
 import { validateConfigRoots } from '../../config-validation.js';
-import { createCleanupRuntime } from '../../app/create-runtime.js';
+import { createCleanupRuntime } from '../composition.js';
 import type { TaskLifecyclePort } from '../../ports/task-lifecycle.js';
 import { InMemoryTaskLifecycle } from '../task-lifecycle/in-memory-task-lifecycle.js';
 import { goalChangedToEvent, sessionDisposedToEvent } from './lifecycle-mapping.js';
@@ -40,7 +40,6 @@ export function createLifecycleAdapter(
     // Composition root: real FsPort/GitPort protections are bound here and
     // consulted by every SafetyKernel decision this runtime produces.
     const runtime = createCleanupRuntime(config);
-    runtime.orchestrator.markReady();
 
     ctx.on('goal/changed', (payload: unknown): void => {
       try {
@@ -87,13 +86,25 @@ export function createLifecycleAdapter(
       }
     });
 
-    // Readiness probe: listeners are registered and the version/root gates passed.
-    ctx.logger(PLUGIN_NAME).info(
-      'dsh-task-cleaner ready (dryRun=%s, dsh=%s, workspaceRoot=%s)',
-      config.dryRun,
-      version,
-      config.workspaceRoot ?? 'unset',
-    );
+    // Activation is async (workspace pre-flight goes through the real FsPort);
+    // Cordis `apply` is synchronous, so a failure is logged instead of thrown
+    // into the host, and readiness is only declared after the pre-flight.
+    void (async (): Promise<void> => {
+      try {
+        if (config.workspaceRoot) {
+          await runtime.orchestrator.validateWorkspace(config.workspaceRoot);
+        }
+        runtime.orchestrator.markReady();
+        ctx.logger(PLUGIN_NAME).info(
+          'dsh-task-cleaner ready (dryRun=%s, dsh=%s, workspaceRoot=%s)',
+          config.dryRun,
+          version,
+          config.workspaceRoot ?? 'unset',
+        );
+      } catch (error) {
+        ctx.logger(PLUGIN_NAME).error('dsh-task-cleaner activation failed: %s', error);
+      }
+    })();
   };
 
   Object.defineProperty(apply, 'name', { value: PLUGIN_NAME, configurable: true });

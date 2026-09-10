@@ -1,4 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { InMemoryTaskLifecycle } from '../src/adapter/task-lifecycle/in-memory-task-lifecycle.js';
 import { createLifecycleAdapter } from '../src/adapter/dsh/index.js';
@@ -7,14 +10,22 @@ import type { TaskLifecycleEvent } from '../src/domain/task-lifecycle.js';
 
 interface FakeContext {
   on(event: string, handler: (payload: unknown) => void): void;
-  logger(): { info(...args: unknown[]): void; warn(fmt: string, ...args: unknown[]): void };
+  logger(): {
+    info(...args: unknown[]): void;
+    warn(fmt: string, ...args: unknown[]): void;
+    error(fmt: string, ...args: unknown[]): void;
+  };
   handlers: Map<string, ((payload: unknown) => void)[]>;
+  infos: string[];
   warns: string[];
+  errors: string[];
 }
 
 function makeFakeContext(): FakeContext {
   const handlers = new Map<string, ((payload: unknown) => void)[]>();
+  const infos: string[] = [];
   const warns: string[] = [];
+  const errors: string[] = [];
   return {
     on(event, handler) {
       const list = handlers.get(event) ?? [];
@@ -23,14 +34,21 @@ function makeFakeContext(): FakeContext {
     },
     logger() {
       return {
-        info() {},
+        info(fmt: string) {
+          infos.push(fmt);
+        },
         warn(fmt: string) {
           warns.push(fmt);
+        },
+        error(fmt: string) {
+          errors.push(fmt);
         },
       };
     },
     handlers,
+    infos,
     warns,
+    errors,
   };
 }
 
@@ -92,5 +110,33 @@ describe('createLifecycleAdapter', () => {
 
     expect(published).toHaveLength(0);
     expect(fake.warns).toHaveLength(0);
+  });
+
+  test('activation pre-flights a valid workspace root through the real FsPort (m5)', async () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), 'dsh-task-cleaner-ws-'));
+    const fake = makeFakeContext();
+    const adapter = createLifecycleAdapter(new InMemoryTaskLifecycle());
+    adapter(fake as unknown as Context, {
+      ...config(),
+      workspaceRoot,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    expect(fake.errors).toHaveLength(0);
+    expect(fake.infos.join(' ')).toContain('ready');
+    rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  test('activation reports a workspace that disappears before the FsPort pre-flight (m5)', async () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), 'dsh-task-cleaner-gone-'));
+    const fake = makeFakeContext();
+    const adapter = createLifecycleAdapter(new InMemoryTaskLifecycle());
+    adapter(fake as unknown as Context, { ...config(), workspaceRoot });
+    rmSync(workspaceRoot, { recursive: true, force: true });
+
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    expect(fake.errors.length).toBeGreaterThan(0);
   });
 });
