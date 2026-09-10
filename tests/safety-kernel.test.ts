@@ -1,20 +1,23 @@
 import { describe, expect, test } from 'vitest';
 import { DefaultDenySafetyKernel } from '../src/app/default-deny-safety-kernel.js';
 import type { ArtifactCandidate, CleanupPlan } from '../src/domain/artifact.js';
-import type { FileIdentity, RealPath } from '../src/domain/common.js';
+import type { FileIdentity, RealPath, RelPath } from '../src/domain/common.js';
 import { SAFETY_REASON } from '../src/domain/safety-kernel.js';
 import type { DecisionContext } from '../src/domain/safety-kernel.js';
 import type { FsPort, PathStat } from '../src/ports/filesystem.js';
 import type { GitPort } from '../src/ports/git.js';
 
 const IDENTITY: FileIdentity = { dev: '1', ino: '1', nlink: 1, ctime: '2026-01-01T00:00:00Z' };
+const MTIME = '2026-01-01T00:00:00Z';
 
 interface FakeFsOptions {
   readonly contained?: boolean;
   readonly symlink?: boolean;
   readonly identity?: FileIdentity;
+  readonly sizeBytes?: number;
+  readonly mtime?: string;
+  readonly samePath?: boolean;
   readonly lstatFails?: boolean;
-  readonly realpathFails?: boolean;
 }
 
 class FakeFs implements FsPort {
@@ -25,8 +28,19 @@ class FakeFs implements FsPort {
   }
 
   async realpath(path: string): Promise<RealPath> {
-    if (this.options.realpathFails) throw new Error('realpath_failed');
     return path as RealPath;
+  }
+
+  resolveRelative(root: RealPath, relPath: RelPath): RealPath | null {
+    const normalized = relPath.replace(/\\/g, '/');
+    if (!normalized || normalized.startsWith('/') || normalized.split('/').includes('..')) {
+      return null;
+    }
+    return `${root}/${normalized}` as RealPath;
+  }
+
+  samePath(): boolean {
+    return this.options.samePath ?? true;
   }
 
   async contains(): Promise<boolean> {
@@ -41,8 +55,8 @@ class FakeFs implements FsPort {
       isFile: true,
       isSymlink: this.options.symlink ?? false,
       identity: this.options.identity ?? IDENTITY,
-      sizeBytes: 10,
-      mtime: '2026-01-01T00:00:00Z',
+      sizeBytes: this.options.sizeBytes ?? 10,
+      mtime: this.options.mtime ?? MTIME,
       mode: '644',
     };
   }
@@ -78,7 +92,7 @@ function candidate(candidateId: string, overrides: Partial<ArtifactCandidate> = 
     identity: IDENTITY,
     sizeBytes: 10,
     sha256: 'a'.repeat(64),
-    mtime: '2026-01-01T00:00:00Z',
+    mtime: MTIME,
     mode: '0644',
     gitTracked: false,
     symlink: null,
@@ -94,7 +108,7 @@ function plan(candidates: readonly ArtifactCandidate[]): CleanupPlan {
     manifestId: 'manifest-1',
     taskId: 'task-1',
     runId: 'run-1',
-    createdAt: '2026-01-01T00:00:00Z',
+    createdAt: MTIME,
     status: 'frozen',
     candidates,
   };
@@ -104,7 +118,7 @@ const context: DecisionContext = {
   taskId: 'task-1',
   runId: 'run-1',
   workspaceRoot: '/workspace',
-  now: '2026-01-01T00:00:00Z',
+  now: MTIME,
   dryRun: true,
 };
 
@@ -147,6 +161,16 @@ describe('DefaultDenySafetyKernel protection predicates', () => {
     expect(summary.decisions[0].reasonCode).toBe(SAFETY_REASON.MISSING_WORKSPACE_ROOT);
   });
 
+  test('denies escaping or absolute relative paths', async () => {
+    const summary = await kernel().decide(plan([candidate('c1', { relPath: '../escape' })]), context);
+    expect(summary.decisions[0].reasonCode).toBe(SAFETY_REASON.INVALID_REL_PATH);
+  });
+
+  test('denies any path inside .git internals (m1)', async () => {
+    const summary = await kernel().decide(plan([candidate('c1', { relPath: '.git/config' })]), context);
+    expect(summary.decisions[0].reasonCode).toBe(SAFETY_REASON.GIT_INTERNAL_PATH);
+  });
+
   test('denies symlink candidates without following them (S-03)', async () => {
     const summary = await kernel({ symlink: true }).decide(plan([candidate('c1')]), context);
     expect(summary.decisions[0].reasonCode).toBe(SAFETY_REASON.SYMLINK_NOT_FOLLOWED);
@@ -157,12 +181,30 @@ describe('DefaultDenySafetyKernel protection predicates', () => {
     expect(summary.decisions[0].reasonCode).toBe(SAFETY_REASON.OUTSIDE_WORKSPACE);
   });
 
+  test('denies candidates whose relPath and source path disagree (m2)', async () => {
+    const summary = await kernel({ samePath: false }).decide(plan([candidate('c1')]), context);
+    expect(summary.decisions[0].reasonCode).toBe(SAFETY_REASON.REL_PATH_UNBOUND);
+  });
+
   test('denies candidates whose captured identity no longer matches (S-05/S-06)', async () => {
     const summary = await kernel({ identity: { ...IDENTITY, ino: '2' } }).decide(
       plan([candidate('c1')]),
       context,
     );
     expect(summary.decisions[0].reasonCode).toBe(SAFETY_REASON.IDENTITY_MISMATCH);
+  });
+
+  test('denies candidates whose size changed after planning (m3)', async () => {
+    const summary = await kernel({ sizeBytes: 999 }).decide(plan([candidate('c1')]), context);
+    expect(summary.decisions[0].reasonCode).toBe(SAFETY_REASON.IDENTITY_MISMATCH);
+  });
+
+  test('denies hardlinked candidates (m3)', async () => {
+    const summary = await kernel({ identity: { ...IDENTITY, nlink: 2 } }).decide(
+      plan([candidate('c1')]),
+      context,
+    );
+    expect(summary.decisions[0].reasonCode).toBe(SAFETY_REASON.HARDLINK_NOT_ALLOWED);
   });
 
   test('denies Git-tracked candidates (S-04)', async () => {

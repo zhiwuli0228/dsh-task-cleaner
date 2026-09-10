@@ -7,6 +7,10 @@ import type { GitStatus } from '../domain/common.js';
 export interface GitPort {
   /** HEAD/index tracked status for a workspace-relative path. */
   status(workspaceRoot: string, relPath: string): Promise<GitStatus>;
-  /** True when the workspace has a `.git` directory. */
+  /**
+   * True when the workspace is inside a Git work tree. A workspace that is a
+   * subdirectory of a parent repository is still Git-backed, so this must not
+   * be reduced to "workspaceRoot/.git exists".
+   */
   hasGitDir(workspaceRoot: string): Promise<boolean>;
 }

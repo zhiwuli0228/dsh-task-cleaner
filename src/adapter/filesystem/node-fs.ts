@@ -20,7 +20,7 @@ export class WorkspaceRootValidationError extends Error {
   }
 }
 
-function samePath(a: string, b: string): boolean {
+function pathsEqual(a: string, b: string): boolean {
   const na = normalize(resolve(a));
   const nb = normalize(resolve(b));
   return process.platform === 'win32' ? na.toLowerCase() === nb.toLowerCase() : na === nb;
@@ -47,6 +47,20 @@ export class NodeFsPort implements FsPort {
   async realpath(path: string): Promise<RealPath> {
     const resolved = await realpath(resolve(path));
     return normalize(resolved) as RealPath;
+  }
+
+  resolveRelative(root: RealPath, relPath: RelPath): RealPath | null {
+    if (!relPath || isAbsolute(relPath)) return null;
+    const normalized = normalize(relPath).replace(/\\/g, '/');
+    if (normalized.startsWith('/') || normalized.split('/').includes('..')) return null;
+    const joined = normalize(join(root, ...normalized.split('/')));
+    const rel = relative(normalize(root), joined);
+    if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) return null;
+    return joined as RealPath;
+  }
+
+  samePath(a: RealPath, b: RealPath): boolean {
+    return pathsEqual(a, b);
   }
 
   async contains(root: RealPath, candidate: RealPath): Promise<boolean> {
@@ -106,7 +120,7 @@ export class NodeFsPort implements FsPort {
     if (resolved === parse(resolved).root) {
       throw new WorkspaceRootValidationError(`workspace root must not be the filesystem root: "${resolved}"`);
     }
-    if (samePath(resolved, homedir())) {
+    if (pathsEqual(resolved, homedir())) {
       throw new WorkspaceRootValidationError(`workspace root must not be the user home directory: "${resolved}"`);
     }
     if (hasGitComponent(resolved)) {
@@ -123,7 +137,7 @@ export class NodeFsPort implements FsPort {
 
     const quarantine = this.quarantineRoot;
     if (quarantine !== undefined && quarantine !== '') {
-      if (samePath(resolved, quarantine)) {
+      if (pathsEqual(resolved, quarantine)) {
         throw new WorkspaceRootValidationError('workspace root must not equal the quarantine root (S-05)');
       }
       const rel = relative(normalize(resolved), normalize(resolve(quarantine)));

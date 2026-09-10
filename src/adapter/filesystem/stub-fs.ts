@@ -19,6 +19,20 @@ export class StubFsPort implements FsPort {
     return resolve(path) as RealPath;
   }
 
+  resolveRelative(root: RealPath, relPath: RelPath): RealPath | null {
+    if (!relPath || isAbsolute(relPath)) return null;
+    const joined = resolve(root, relPath);
+    const rel = relative(root, joined);
+    if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) return null;
+    return joined as RealPath;
+  }
+
+  samePath(a: RealPath, b: RealPath): boolean {
+    const na = resolve(a);
+    const nb = resolve(b);
+    return process.platform === 'win32' ? na.toLowerCase() === nb.toLowerCase() : na === nb;
+  }
+
   async contains(root: RealPath, candidate: RealPath): Promise<boolean> {
     const rel = relative(root, candidate);
     return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));

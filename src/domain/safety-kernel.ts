@@ -47,12 +47,20 @@ export const SAFETY_REASON = {
   MISSING_WORKSPACE_ROOT: 'missing_workspace_root',
   /** The candidate path cannot be lstat/realpath resolved (S-02/S-03). */
   UNRESOLVABLE_PATH: 'unresolvable_path',
+  /** The workspace-relative path is empty, absolute, or escapes the root. */
+  INVALID_REL_PATH: 'invalid_rel_path',
+  /** The candidate points into `.git/` internals; never a cleanup target. */
+  GIT_INTERNAL_PATH: 'git_internal_path',
   /** Candidate is a symlink/junction; links are never followed (S-03). */
   SYMLINK_NOT_FOLLOWED: 'symlink_not_followed',
   /** Candidate resolves outside the configured workspace root (S-02). */
   OUTSIDE_WORKSPACE: 'outside_workspace',
+  /** relPath and sourceRealPath do not describe the same file (S-03/S-06). */
+  REL_PATH_UNBOUND: 'rel_path_unbound',
   /** Captured identity no longer matches the file on disk (S-05/S-06). */
   IDENTITY_MISMATCH: 'identity_mismatch',
+  /** Hardlinked file: other links would survive a move (S-05). */
+  HARDLINK_NOT_ALLOWED: 'hardlink_not_allowed',
   /** Candidate is tracked by HEAD or the Git index (S-04). */
   GIT_TRACKED: 'git_tracked',
   /** Git status could not be established; fail closed (S-04). */

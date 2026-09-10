@@ -62,34 +62,57 @@ export class DefaultDenySafetyKernel implements SafetyKernel {
     if (!candidate.sourceRealPath) return SAFETY_REASON.MISSING_REAL_PATH;
     if (workspace === null) return SAFETY_REASON.MISSING_WORKSPACE_ROOT;
 
-    // lstat on the candidate itself: symlinks are visible and never followed.
-    let stat;
+    // relPath hygiene first: `.git/` internals are never cleanup targets, and
+    // an executable-prefixed/escaping relative path cannot be trusted.
+    const segments = candidate.relPath.replace(/\\/g, '/').split('/');
+    if (segments.some((segment) => segment.toLowerCase() === '.git')) {
+      return SAFETY_REASON.GIT_INTERNAL_PATH;
+    }
+
+    // Bind relPath -> real path through the port (ADR-002 rule 4): the
+    // candidate is only trustworthy when the relative path and the recorded
+    // canonical path describe the same file.
+    const relAbsolute = this.ports.fs.resolveRelative(workspace, candidate.relPath);
+    if (relAbsolute === null) return SAFETY_REASON.INVALID_REL_PATH;
+
+    // lstat through the relPath (never the pre-resolved path): a symlink at
+    // the candidate location is visible even when sourceRealPath was resolved.
+    let relStat;
     try {
-      stat = await this.ports.fs.lstat(candidate.sourceRealPath);
+      relStat = await this.ports.fs.lstat(relAbsolute);
     } catch {
       return SAFETY_REASON.UNRESOLVABLE_PATH;
     }
-    if (stat.isSymlink || candidate.symlink !== null) {
+    if (relStat.isSymlink || candidate.symlink !== null) {
       return SAFETY_REASON.SYMLINK_NOT_FOLLOWED;
     }
 
-    // Canonicalize, then require strict containment inside the workspace root.
-    let canonical;
+    let relCanonical;
+    let sourceCanonical;
     try {
-      canonical = await this.ports.fs.realpath(candidate.sourceRealPath);
+      relCanonical = await this.ports.fs.realpath(relAbsolute);
+      sourceCanonical = await this.ports.fs.realpath(candidate.sourceRealPath);
     } catch {
       return SAFETY_REASON.UNRESOLVABLE_PATH;
     }
-    if (!(await this.ports.fs.contains(workspace, canonical))) {
+    if (!(await this.ports.fs.contains(workspace, relCanonical))) {
       return SAFETY_REASON.OUTSIDE_WORKSPACE;
+    }
+    if (!this.ports.fs.samePath(relCanonical, sourceCanonical)) {
+      return SAFETY_REASON.REL_PATH_UNBOUND;
     }
 
     // The identity captured at plan time must still describe the same file.
     if (
-      stat.identity.dev !== candidate.identity.dev ||
-      stat.identity.ino !== candidate.identity.ino
+      relStat.identity.dev !== candidate.identity.dev ||
+      relStat.identity.ino !== candidate.identity.ino ||
+      relStat.sizeBytes !== candidate.sizeBytes ||
+      relStat.mtime !== candidate.mtime
     ) {
       return SAFETY_REASON.IDENTITY_MISMATCH;
+    }
+    if (relStat.identity.nlink > 1) {
+      return SAFETY_REASON.HARDLINK_NOT_ALLOWED;
     }
 
     let gitStatus;
