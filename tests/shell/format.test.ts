@@ -17,8 +17,11 @@ describe("format helpers", () => {
     assert.equal(formatBytes(-1), "0 B");
   });
 
-  it("formats RFC 3339 timestamps and keeps invalid values visible", () => {
-    assert.match(formatTimestamp("2026-09-09T12:00:00.000Z"), /^2026-09-09 20:00:00$/);
+  it("formats RFC 3339 timestamps deterministically in UTC and keeps invalid values visible", () => {
+    // R5 determinism: the rendered label must not depend on the host time zone
+    // (this assertion previously failed on UTC CI runners).
+    assert.equal(formatTimestamp("2026-09-09T12:00:00.000Z"), "2026-09-09 12:00:00Z");
+    assert.equal(formatTimestamp("2026-09-09T12:00:00+08:00"), "2026-09-09 04:00:00Z");
     assert.equal(formatTimestamp(null), "-");
     // Malformed input is never echoed raw (SecurityReview MINOR-5); a
     // neutral placeholder is shown instead.

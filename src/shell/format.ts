@@ -19,7 +19,13 @@ export function formatBytes(bytes: number): string {
 }
 
 /**
- * RFC 3339 -> local display label; unknown/empty falls back to "-".
+ * RFC 3339 -> deterministic UTC display label (R5); unknown/empty falls back to "-".
+ *
+ * The shell contract requires deterministic formatting: rendering in the
+ * host's local time zone made identical inputs render differently on local
+ * machines and CI runners. UTC keeps the label stable everywhere; the
+ * trailing `Z` makes the zone explicit instead of implying local time.
+ *
  * Malformed input is never echoed back raw (SecurityReview MINOR-5);
  * it renders as a neutral placeholder instead.
  */
@@ -29,8 +35,8 @@ export function formatTimestamp(iso: string | null): string {
   if (Number.isNaN(parsed.getTime())) return "[invalid timestamp]";
   const pad = (n: number, width = 2): string => String(n).padStart(width, "0");
   return (
-    `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())} ` +
-    `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}:${pad(parsed.getSeconds())}`
+    `${parsed.getUTCFullYear()}-${pad(parsed.getUTCMonth() + 1)}-${pad(parsed.getUTCDate())} ` +
+    `${pad(parsed.getUTCHours())}:${pad(parsed.getUTCMinutes())}:${pad(parsed.getUTCSeconds())}Z`
   );
 }
 
