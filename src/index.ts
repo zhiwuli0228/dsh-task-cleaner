@@ -10,4 +10,7 @@
 export { apply, plugin, plugin as default } from './adapter/dsh/index.js';
 export { ConfigSchema } from './config.js';
 export type { Config, LifecycleConfig } from './config.js';
+export { createCleanupRuntime } from './app/create-runtime.js';
+export type { CleanupRuntime } from './app/create-runtime.js';
+export { DefaultDenySafetyKernel } from './app/default-deny-safety-kernel.js';
 export * from './shell/index.js';

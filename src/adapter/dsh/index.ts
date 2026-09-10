@@ -4,6 +4,7 @@ import type { GoalChanged } from '@deepseek-ai/dsh-goal';
 import type { Session } from '@deepseek-ai/dsh-session';
 import { ConfigSchema, type Config } from '../../config.js';
 import { validateConfigRoots } from '../../config-validation.js';
+import { createCleanupRuntime } from '../../app/create-runtime.js';
 import type { TaskLifecyclePort } from '../../ports/task-lifecycle.js';
 import { InMemoryTaskLifecycle } from '../task-lifecycle/in-memory-task-lifecycle.js';
 import { goalChangedToEvent, sessionDisposedToEvent } from './lifecycle-mapping.js';
@@ -35,6 +36,11 @@ export function createLifecycleAdapter(
     const version = readDshVersion();
     checkDshVersion(version);
     validateConfigRoots(config);
+
+    // Composition root: real FsPort/GitPort protections are bound here and
+    // consulted by every SafetyKernel decision this runtime produces.
+    const runtime = createCleanupRuntime(config);
+    runtime.orchestrator.markReady();
 
     ctx.on('goal/changed', (payload: unknown): void => {
       try {
@@ -83,9 +89,10 @@ export function createLifecycleAdapter(
 
     // Readiness probe: listeners are registered and the version/root gates passed.
     ctx.logger(PLUGIN_NAME).info(
-      'dsh-task-cleaner ready (dryRun=%s, dsh=%s)',
+      'dsh-task-cleaner ready (dryRun=%s, dsh=%s, workspaceRoot=%s)',
       config.dryRun,
       version,
+      config.workspaceRoot ?? 'unset',
     );
   };
 

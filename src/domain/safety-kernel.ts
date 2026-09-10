@@ -36,11 +36,27 @@ export interface DecisionContext {
  * code must never construct filesystem actions without routing through here.
  */
 export interface SafetyKernel {
-  decide(plan: CleanupPlan, context: DecisionContext): SafetyDecisionSummary;
+  decide(plan: CleanupPlan, context: DecisionContext): Promise<SafetyDecisionSummary>;
 }
 
-/** Stable reason codes used by the default-deny baseline kernel. */
+/** Stable reason codes used by the protection-checking default-deny kernel. */
 export const SAFETY_REASON = {
+  /** Candidate has no canonical source path; nothing can be verified (S-02). */
+  MISSING_REAL_PATH: 'missing_real_path',
+  /** The decision context has no usable workspace root (S-02). */
+  MISSING_WORKSPACE_ROOT: 'missing_workspace_root',
+  /** The candidate path cannot be lstat/realpath resolved (S-02/S-03). */
+  UNRESOLVABLE_PATH: 'unresolvable_path',
+  /** Candidate is a symlink/junction; links are never followed (S-03). */
+  SYMLINK_NOT_FOLLOWED: 'symlink_not_followed',
+  /** Candidate resolves outside the configured workspace root (S-02). */
+  OUTSIDE_WORKSPACE: 'outside_workspace',
+  /** Captured identity no longer matches the file on disk (S-05/S-06). */
+  IDENTITY_MISMATCH: 'identity_mismatch',
+  /** Candidate is tracked by HEAD or the Git index (S-04). */
+  GIT_TRACKED: 'git_tracked',
+  /** Git status could not be established; fail closed (S-04). */
+  GIT_STATUS_UNAVAILABLE: 'git_status_unavailable',
   /** Baseline milestone: no allow path is implemented yet (S-07). */
   NOT_IMPLEMENTED_DEFAULT_DENY: 'not_implemented_default_deny',
   /** Candidate failed to satisfy at least one of S-01..S-04 predicates. */

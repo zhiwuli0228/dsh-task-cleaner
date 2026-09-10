@@ -53,7 +53,10 @@ function deps(audit: InMemoryAuditStore, quarantine: InMemoryQuarantineStore): C
     hash: { sha256Hex: async () => 'a'.repeat(64) },
     audit,
     quarantine,
-    safetyKernel: new DefaultDenySafetyKernel(),
+    safetyKernel: new DefaultDenySafetyKernel({
+      fs: {} as CleanupDeps['fs'],
+      git: {} as CleanupDeps['git'],
+    }),
   };
 }
 
