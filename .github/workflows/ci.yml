@@ -18,6 +18,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # The closed-loop workflow checker resolves the discovery baseline
+          # revision (docs/harness/discovery-baseline.json) and requires it to
+          # be an ancestor of HEAD, so the default shallow clone is not enough.
+          fetch-depth: 0
 
       - name: Setup Node 24
         uses: actions/setup-node@v4
